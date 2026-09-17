@@ -2,7 +2,18 @@
 
 A small, local web demo for listening to prose, dictating notes, and attaching comments to selected text. The main app uses **Kokoro WebGPU with the Heart voice**. A separate [model-research page](research/README.md) compares eight recorded OpenRouter samples with word highlighting and measured costs.
 
+**On this page:** [Run the demo](#run-the-main-demo) · [Interactions](#try-the-interactions) · [Model research](#open-the-model-research) · [Development](#development)
+
 ## Run the main demo
+
+<details>
+<summary>Preview the main demo</summary>
+
+<a href="assets/images/demo.png"><img src="assets/images/demo.png" alt="Listen and take notes demo screenshot" width="720"></a>
+
+[View full-size screenshot](assets/images/demo.png)
+
+</details>
 
 Use Node.js 22 or newer and a recent desktop Chrome with hardware acceleration enabled. From the project root:
 
@@ -39,6 +50,15 @@ Dictation requests Chrome's on-device English recognition. It may need a languag
 Notes and comments stay in browser storage on this device. Export important work before clearing browser data or changing computers. Another hostname, port, browser, or profile uses different storage. The export includes the demo passage as well as your notes and comments.
 
 ## Open the model research
+
+<details>
+<summary>Preview the model research</summary>
+
+<a href="assets/images/research.png"><img src="assets/images/research.png" alt="Recorded model comparison research screenshot" width="720"></a>
+
+[View full-size screenshot](assets/images/research.png)
+
+</details>
 
 Open `research/index.html` directly, or run its independent static server:
 
