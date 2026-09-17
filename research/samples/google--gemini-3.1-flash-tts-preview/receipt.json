@@ -1,0 +1,23 @@
+{
+  "id": "gen-tts-1789653068-nbUdM8w2Z7APWvobg6CW",
+  "model": "google/gemini-3.1-flash-tts-preview",
+  "provider_name": "Google",
+  "created_at": "2026-09-17T13:51:08.521Z",
+  "api_type": "tts",
+  "total_cost": 0.010838,
+  "usage": 0.010838,
+  "tokens_prompt": 72,
+  "tokens_completion": 539,
+  "native_tokens_prompt": 58,
+  "native_tokens_completion": 539,
+  "generation_time": null,
+  "latency": 13362,
+  "http_status": 200,
+  "download_seconds": 13.908233166992432,
+  "first_byte_seconds": 13.449659707999672,
+  "audio_seconds": 21.56,
+  "request_sha256": "5e25ea2a513b06370d3d6cf823f0d75dd4f25f479470120057d12c8850ec8ce9",
+  "raw_response_sha256": "7a5208d97b2cca513fd4629a7a4f06df151fb3a7b47b707fd855540389a4cf24",
+  "conversion": "Raw response audio.pcm wrapped as audio.wav: signed PCM16 little endian, mono, 24000 Hz; no resampling.",
+  "decode_ok": true
+}

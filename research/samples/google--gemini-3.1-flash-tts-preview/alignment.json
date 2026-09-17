@@ -1,0 +1,237 @@
+{
+  "method": "stable-ts forced alignment",
+  "stable_ts_version": "2.19.1",
+  "whisper_version": "20250625",
+  "model": "base.en",
+  "language": "en",
+  "audio_sha256": "1cd0aed41545be2970513df8905de653b9f2e6fa9ddf7f332b384790419314ef",
+  "input_sha256": "bd96eaffcfa49a17d14f09379c8889fdbaee74e3b09e4111ac749b1c2cba6660",
+  "notes": "Machine-aligned to supplied text; not human-verified and not evidence of transcription completeness.",
+  "words": [
+    {
+      "text": " The",
+      "start": 0.32,
+      "end": 0.42
+    },
+    {
+      "text": " Apothecary",
+      "start": 0.42,
+      "end": 1.18
+    },
+    {
+      "text": " sank",
+      "start": 1.18,
+      "end": 1.58
+    },
+    {
+      "text": " into",
+      "start": 1.58,
+      "end": 2.04
+    },
+    {
+      "text": " his",
+      "start": 2.04,
+      "end": 2.24
+    },
+    {
+      "text": " chair,",
+      "start": 2.24,
+      "end": 3.32
+    },
+    {
+      "text": " the",
+      "start": 3.32,
+      "end": 3.36
+    },
+    {
+      "text": " wood",
+      "start": 3.36,
+      "end": 3.62
+    },
+    {
+      "text": " creaking",
+      "start": 3.62,
+      "end": 4.3
+    },
+    {
+      "text": " beneath",
+      "start": 4.3,
+      "end": 4.66
+    },
+    {
+      "text": " his",
+      "start": 4.66,
+      "end": 4.92
+    },
+    {
+      "text": " weight.",
+      "start": 4.92,
+      "end": 5.44
+    },
+    {
+      "text": " “They",
+      "start": 6.34,
+      "end": 6.44
+    },
+    {
+      "text": " were",
+      "start": 6.44,
+      "end": 6.6
+    },
+    {
+      "text": " to",
+      "start": 6.6,
+      "end": 6.78
+    },
+    {
+      "text": " be",
+      "start": 6.78,
+      "end": 6.88
+    },
+    {
+      "text": " bound",
+      "start": 6.88,
+      "end": 7.24
+    },
+    {
+      "text": " to",
+      "start": 7.24,
+      "end": 7.66
+    },
+    {
+      "text": " my",
+      "start": 7.66,
+      "end": 7.84
+    },
+    {
+      "text": " will,”",
+      "start": 7.84,
+      "end": 8.12
+    },
+    {
+      "text": " he",
+      "start": 8.9,
+      "end": 8.92
+    },
+    {
+      "text": " admitted,",
+      "start": 8.92,
+      "end": 9.38
+    },
+    {
+      "text": " the",
+      "start": 9.8,
+      "end": 9.9
+    },
+    {
+      "text": " words",
+      "start": 9.9,
+      "end": 10.1
+    },
+    {
+      "text": " bitter",
+      "start": 10.1,
+      "end": 10.54
+    },
+    {
+      "text": " on",
+      "start": 10.54,
+      "end": 10.82
+    },
+    {
+      "text": " his",
+      "start": 10.82,
+      "end": 10.96
+    },
+    {
+      "text": " tongue.",
+      "start": 10.96,
+      "end": 11.44
+    },
+    {
+      "text": " “The",
+      "start": 12.2,
+      "end": 12.32
+    },
+    {
+      "text": " serum",
+      "start": 12.34,
+      "end": 12.62
+    },
+    {
+      "text": " should",
+      "start": 12.62,
+      "end": 12.96
+    },
+    {
+      "text": " have",
+      "start": 12.96,
+      "end": 13.08
+    },
+    {
+      "text": " rendered",
+      "start": 13.08,
+      "end": 13.32
+    },
+    {
+      "text": " them",
+      "start": 13.32,
+      "end": 13.58
+    },
+    {
+      "text": " compliant,",
+      "start": 13.58,
+      "end": 14.23
+    },
+    {
+      "text": " useful.",
+      "start": 14.76,
+      "end": 16.52
+    },
+    {
+      "text": " Instead,",
+      "start": 16.58,
+      "end": 16.74
+    },
+    {
+      "text": " they",
+      "start": 17.18,
+      "end": 17.28
+    },
+    {
+      "text": " demonstrate",
+      "start": 17.28,
+      "end": 17.64
+    },
+    {
+      "text": " independence",
+      "start": 17.64,
+      "end": 18.22
+    },
+    {
+      "text": " and",
+      "start": 18.22,
+      "end": 19.1
+    },
+    {
+      "text": " abilities",
+      "start": 19.1,
+      "end": 19.42
+    },
+    {
+      "text": " I",
+      "start": 19.42,
+      "end": 19.76
+    },
+    {
+      "text": " never",
+      "start": 19.76,
+      "end": 20.12
+    },
+    {
+      "text": " anticipated.”",
+      "start": 20.12,
+      "end": 20.82
+    }
+  ]
+}

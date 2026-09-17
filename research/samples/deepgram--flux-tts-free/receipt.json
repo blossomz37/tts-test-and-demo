@@ -1,0 +1,23 @@
+{
+  "id": "gen-tts-1789653015-RwJRZmFZzONsk5GDY6M9",
+  "model": "deepgram/flux-tts-20260812:free",
+  "provider_name": "Deepgram",
+  "created_at": "2026-09-17T13:50:15.481Z",
+  "api_type": "tts",
+  "total_cost": 0,
+  "usage": 0,
+  "tokens_prompt": 72,
+  "tokens_completion": null,
+  "native_tokens_prompt": 72,
+  "native_tokens_completion": null,
+  "generation_time": null,
+  "latency": 662,
+  "http_status": 200,
+  "download_seconds": 9.878302249999251,
+  "first_byte_seconds": 0.737998874988989,
+  "audio_seconds": 16.224,
+  "request_sha256": "3e049e665cb30d7eb2fc89722b3c31488cc286b7d4ef28890b14e639fc16e382",
+  "raw_response_sha256": "b37fc2b1878c9fca1d982a8fa674a8b04a4edca9ea92deddffccc997d5b352ad",
+  "conversion": null,
+  "decode_ok": true
+}

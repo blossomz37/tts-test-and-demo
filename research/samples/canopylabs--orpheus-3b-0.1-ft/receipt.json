@@ -1,0 +1,23 @@
+{
+  "id": "gen-tts-1789653051-kY3S4qFRXebll0RycpH4",
+  "model": "canopylabs/orpheus-3b-0.1-ft",
+  "provider_name": "Together",
+  "created_at": "2026-09-17T13:50:51.919Z",
+  "api_type": "tts",
+  "total_cost": 0.004275,
+  "usage": 0.004275,
+  "tokens_prompt": 72,
+  "tokens_completion": null,
+  "native_tokens_prompt": 72,
+  "native_tokens_completion": null,
+  "generation_time": null,
+  "latency": 6504,
+  "http_status": 200,
+  "download_seconds": 6.5931126249925,
+  "first_byte_seconds": 6.567602041002829,
+  "audio_seconds": 17.64,
+  "request_sha256": "209367d47cd73c54c5c37bbd5aee4d6c2a89bf452d83d176e821bd57199c1815",
+  "raw_response_sha256": "41280245057fccc4fdb5254efb7256574505f1e92b01a650330fabd036b5a73e",
+  "conversion": null,
+  "decode_ok": true
+}

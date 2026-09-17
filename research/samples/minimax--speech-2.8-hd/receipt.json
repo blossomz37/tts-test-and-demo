@@ -1,0 +1,23 @@
+{
+  "id": "gen-tts-1789653114-nol940hjXvJS5hmZYAme",
+  "model": "minimax/speech-2.8-hd-20260716",
+  "provider_name": "Minimax",
+  "created_at": "2026-09-17T13:51:54.632Z",
+  "api_type": "tts",
+  "total_cost": 0.0285,
+  "usage": 0.0285,
+  "tokens_prompt": 72,
+  "tokens_completion": null,
+  "native_tokens_prompt": 72,
+  "native_tokens_completion": null,
+  "generation_time": null,
+  "latency": 1876,
+  "http_status": 200,
+  "download_seconds": 3.723712125007296,
+  "first_byte_seconds": 1.972778916999232,
+  "audio_seconds": 18.108,
+  "request_sha256": "304dd06b88041a3add131062b4629b29644d36476d53650e636eb8942e789de2",
+  "raw_response_sha256": "5e8292d21bbd2361a8df38bde5fc5b3124eea226a01e09c51e121a8cd5034bef",
+  "conversion": null,
+  "decode_ok": true
+}

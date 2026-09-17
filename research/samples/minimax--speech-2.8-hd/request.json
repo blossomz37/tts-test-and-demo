@@ -1,0 +1,6 @@
+{
+  "model": "minimax/speech-2.8-hd",
+  "input": "The Apothecary sank into his chair, the wood creaking beneath his weight. “They were to be bound to my will,” he admitted, the words bitter on his tongue. “The serum should have rendered them compliant, useful. Instead, they demonstrate independence and abilities I never anticipated.”",
+  "voice": "English_expressive_narrator",
+  "response_format": "mp3"
+}

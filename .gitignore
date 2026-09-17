@@ -1,0 +1,46 @@
+# Dependencies and generated browser/model assets
+node_modules/
+/vendor/
+/models/kokoro/
+
+# Credentials and machine-local settings (neither app requires API keys)
+.env
+.env.*
+.env-*
+*.local
+
+# Maintainer work, browser state, evidence, and recovery archives
+/.archive/
+/archive/
+/.local/
+/.scratch/
+/.demo/
+/.playwright-cli/
+/output/
+/results/
+/openrouter-samples/
+
+# Packaged releases are local outputs; maintained sources live here and in research/
+/releases/
+
+# Restored historical files must not enter a future commit accidentally
+/sample-chapter.md
+/fixtures/manifest.json
+/fixtures/short.txt
+/tts-ideas.md
+/TTS_TEST_PLAN.md
+/TTS_DECISIONS.md
+/QOL_RECOMMENDATIONS.md
+/scripts/*-smoke.py
+/scripts/prepare-research.py
+
+# OS, editor, and Python artifacts
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.log

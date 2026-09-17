@@ -1,0 +1,52 @@
+{
+  "data": {
+    "id": "minimax/speech-2.8-hd",
+    "name": "MiniMax: Speech 2.8 HD",
+    "created": 1784164001,
+    "description": "MiniMax Speech 2.8 HD is a text-to-speech model from MiniMax. It is suited for applications that generate spoken audio from text and accepts arbitrary MiniMax voice IDs.",
+    "architecture": {
+      "tokenizer": "Other",
+      "instruct_type": null,
+      "modality": "text->speech",
+      "input_modalities": [
+        "text"
+      ],
+      "output_modalities": [
+        "speech"
+      ]
+    },
+    "endpoints": [
+      {
+        "name": "Minimax | minimax/speech-2.8-hd-20260716",
+        "model_id": "minimax/speech-2.8-hd",
+        "model_name": "MiniMax: Speech 2.8 HD",
+        "context_length": 0,
+        "pricing": {
+          "prompt": "0.0001",
+          "completion": "0",
+          "discount": 0
+        },
+        "provider_name": "Minimax",
+        "tag": "minimax",
+        "quantization": "unknown",
+        "max_completion_tokens": 0,
+        "max_prompt_tokens": null,
+        "supported_parameters": [],
+        "supports_tool_choice": {
+          "none": true,
+          "auto": true,
+          "required": true,
+          "function": true
+        },
+        "status": 0,
+        "uptime_last_30m": null,
+        "uptime_last_5m": null,
+        "uptime_last_1d": 100,
+        "supports_implicit_caching": false,
+        "supports_voice_cloning": false,
+        "latency_last_30m": null,
+        "throughput_last_30m": null
+      }
+    ]
+  }
+}

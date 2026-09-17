@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Eight text-to-speech models, one passage. Listen, follow the text, and compare real request costs and timing.">
+<title>Voice study · Electric Creative</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<script defer src="data.js"></script><script defer src="app.js"></script>
+</head>
+<body>
+<a class="skip" href="#player">Skip to player</a>
+<header><div class="masthead"><span class="brand">Electric Creative</span><span class="edition">Voice study <span aria-hidden="true">/</span> 01</span></div></header>
+<main>
+<section class="intro" aria-labelledby="title"><div><p class="eyebrow">Model research · September 17, 2026</p><h1 id="title">One passage. Eight voices.</h1><p class="lede">Listen to the same scene across eight speech models.<br class="desktop"> Follow the words. Compare what each call actually cost.</p></div><div class="round-stat"><strong>8 / 8</strong><span>successful samples</span><span class="cost">$0.053303 total</span></div></section>
+<section class="player" id="player" aria-labelledby="model-name" tabindex="-1">
+<div class="player-top"><div><p class="eyebrow">Now selected</p><h2 id="model-name"></h2><p id="voice-label" class="subtle"></p></div><div class="player-price"><strong id="sample-cost"></strong><span>this sample</span></div></div>
+<p id="passage" class="passage" aria-label="Comparison passage"></p>
+<audio id="audio" preload="metadata"></audio>
+<div class="transport"><button id="play" class="icon primary" aria-label="Play" data-tooltip="Play"></button><button id="restart" class="icon" aria-label="Start over" data-tooltip="Start over"></button><div class="scrubber"><label class="sr-only" for="seek">Playback position</label><input id="seek" type="range" min="0" max="100" value="0" step="0.01"><div class="time"><span id="elapsed">0:00</span><span id="duration">0:00</span></div></div><label class="speed"><span class="sr-only">Playback speed</span><select id="speed" aria-label="Playback speed"><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label><a id="download" class="icon" download aria-label="Download selected audio" data-tooltip="Download audio"></a></div>
+<div class="player-foot"><p class="subtle">Word highlighting uses machine-aligned timings; small timing errors are possible.</p><p id="status" class="subtle" role="status" aria-live="polite">Ready to play.</p></div>
+<details class="evidence"><summary>Request &amp; recording details</summary><dl id="details"></dl><nav id="evidence-links" aria-label="Selected sample evidence"></nav></details>
+</section>
+<section class="comparison" aria-labelledby="compare-title"><div class="section-heading"><h2 id="compare-title">Choose a voice</h2><span class="subtle">Same text · 285 characters · USD</span></div><div class="table-wrap"><table><thead><tr><th scope="col">Model / voice</th><th scope="col">Routed provider</th><th scope="col">Sample cost</th><th scope="col">Full audio ready</th><th scope="col"><span class="sr-only">Playback and audio file</span></th></tr></thead><tbody id="models"></tbody></table></div><p class="caption">“Full audio ready” measures the request through the last downloaded byte. It is not playback duration or time to first sound. One call per model; these are observations, not a speed benchmark.</p></section>
+<section class="findings" aria-labelledby="findings-title"><h2 id="findings-title">What this round tells us</h2><div class="finding-grid"><article><p class="eyebrow">01 · Cost</p><h3>Free really was free.</h3><p>Flux and Fish returned audio at $0. Kokoro was the cheapest paid call, at $0.00114 for this passage.</p></article><article><p class="eyebrow">02 · Routing</p><h3>The provider changes the price.</h3><p>Kokoro and Orpheus both routed to Together. DeepInfra listed lower rates, but these requests used default routing.</p></article><article><p class="eyebrow">03 · Usage</p><h3>Tokens are not characters.</h3><p>Gemini billed 58 native input tokens and 539 output audio tokens. The other paid calls matched character pricing.</p></article></div></section>
+<details class="method"><summary>Method, limits &amp; sources</summary><div class="method-body"><p>All eight recordings use the exact same passage. Each request supplied a model, a voice, the text, and an audio format. No speed, style, or routing override was sent. Every response passed a full audio decode check. Audio quality and word-for-word completeness have not been rated.</p><p>OpenRouter reported no separate generation-time value for any call. Costs are measured inference charges, excluding account funding fees. Prices and free-model availability can change.</p><p>Word timestamps were produced locally with stable-ts and Whisper base.en, aligning the supplied passage to each recording. These are approximate machine alignments, not provider timestamps or proof that every word was spoken. The audio and text are unchanged.</p><p>All recordings, timing data, and fonts are bundled. Playback makes no model calls and needs no API key. The request and billing links contain the sample evidence; account identifiers have been omitted from the shared receipt extracts.</p><p><a href="https://openrouter.ai/docs/guides/overview/multimodal/tts">OpenRouter speech guide</a> · <a href="https://github.com/jianfch/stable-ts#alignment">Alignment method</a> · <a href="README.md">Readme</a> · <a href="AGENTS.md">Agent guide</a></p></div></details>
+<noscript><p>Enable JavaScript to use the player and model catalogue. Audio files are also available in the samples folder.</p></noscript>
+</main><footer><span>Electric Creative · Carlo V. Santiago</span><span>Independent research demo · v0.1.0</span></footer>
+<div id="tooltip" role="tooltip" hidden></div>
+</body></html>

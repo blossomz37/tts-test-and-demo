@@ -1,0 +1,23 @@
+{
+  "id": "gen-tts-1789653101-Wytr84Y8j5AopWB7hLt9",
+  "model": "x-ai/grok-voice-tts-1.0",
+  "provider_name": "xAI",
+  "created_at": "2026-09-17T13:51:41.71Z",
+  "api_type": "tts",
+  "total_cost": 0.004275,
+  "usage": 0.004275,
+  "tokens_prompt": 72,
+  "tokens_completion": null,
+  "native_tokens_prompt": 72,
+  "native_tokens_completion": null,
+  "generation_time": null,
+  "latency": 107,
+  "http_status": 200,
+  "download_seconds": 2.6971332079992862,
+  "first_byte_seconds": 0.3808576669980539,
+  "audio_seconds": 18.36,
+  "request_sha256": "d902c38cc1c1a4f5b6132d3505eb99c1078dbc7f7ec4879f0e337a880e3ce379",
+  "raw_response_sha256": "02f7b78e45d6fc4c0a23d1cc5bbc6949857149ae4577567610c8d3db4f71d1d3",
+  "conversion": null,
+  "decode_ok": true
+}
