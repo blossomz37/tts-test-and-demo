@@ -79,7 +79,34 @@ npm run reader:serve -- --dir /absolute/path/to/audio-run/reader --port YOUR_ASS
 Use a dedicated port separate from the main demo's root-scope service worker,
 following the host port registry. An occupied port produces an error; the launcher
 never stops another process or silently changes origins. `--port 0` is for isolated
-tests only. The loopback server supports GET/HEAD and single byte ranges for reader assets and paired MP3s. Its notes API requires an exact local origin and a per-launch token for writes. Database files, snapshots and unrelated run files are never served. `--open` opens the browser and reuses an existing server only when its reader identity matches exactly.
+tests only. The loopback server supports GET/HEAD and single byte ranges for reader assets and paired MP3s. Its notes API requires an exact allowed origin and a per-launch token for writes. Database files, snapshots and unrelated run files are never served. `--open` opens the browser and reuses an existing server only when its reader identity and allowed Tailscale origin match exactly.
+
+### Private access through Tailscale
+
+Use [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve) to open
+the same reader and SQLite notes from another device on your tailnet. First inspect
+`tailscale status` for this Mac's full DNS name and `tailscale serve status` for
+occupied HTTPS ports. Keep unrelated routes intact. For an available port 443:
+
+```sh
+node /absolute/path/to/audio-run/reader/serve.mjs --port YOUR_ASSIGNED_PORT \
+  --tailscale-origin https://DEVICE.TAILNET.ts.net
+tailscale serve --bg --https=443 http://127.0.0.1:YOUR_ASSIGNED_PORT
+```
+
+Open `https://DEVICE.TAILNET.ts.net/reader/` on the connected device. For a different
+HTTPS port, include that port in both `--tailscale-origin` and `--https`. Regenerate
+older readers and restart their launcher to obtain this option. The application
+still binds only to loopback and checks the exact Host, Origin and write token;
+forwarded headers do not expand access. The option itself does not start Serve.
+Serve's tailnet access rules control who can read and edit the book.
+
+Keep the Mac awake, Tailscale connected and the reader launcher running. `--bg`
+persists the proxy configuration, but does not start the reader after a reboot.
+Localhost continues to work and shares the same database; pending browser recovery
+copies stay in the browser/origin that created them. Reload before editing from
+another open device to avoid a conflicting database revision. To remove only this
+share, run `tailscale serve --https=443 off` (substitute its HTTPS port).
 
 Choose a chapter, then Play. Seeking, pause/resume, start over and speed changes
 drive highlights through `audio.currentTime`. One audio element prevents overlap.

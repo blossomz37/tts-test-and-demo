@@ -4,12 +4,13 @@ import { mkdtemp, mkdir, readFile, writeFile, readdir, rm } from 'node:fs/promis
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { request } from 'node:http';
 import { ReaderDatabase } from '../reader/database.mjs';
 import { SidecarStore, sidecarKey, positionKey } from '../reader/state.mjs';
 import { preferencesKey, reviewKey, validateBackup, validatePreferences, identity, markdownBrief } from '../reader/book-records.mjs';
 import { readingPreferences } from '../reader/reading-state.mjs';
 import { anchor } from '../src/comments.mjs';
-import { createReaderServer } from '../reader/serve.mjs';
+import { createReaderServer, normalizeTailscaleOrigin } from '../reader/serve.mjs';
 import { hash } from '../reader/inputs.mjs';
 const chapter={id:'chapter-01',title:'Chapter 1',source:{id:'chapter-01',text:'One 🪶 two.\nOne more.',sha256:hash('One 🪶 two.\nOne more.')},audioSha256:hash('audio'),narrationSha256:hash('narration'),duration:12};
 const data={bookId:'book',title:'Test book',chapters:[chapter]};
@@ -88,4 +89,81 @@ test('pending browser recovery blocks new writes and is preserved until delibera
  const client=new DatabaseStorage(browser,data,{revision:2,records:{},token:'fixture',databasePath:'fixture'});
  assert.equal(client.blocked,true);assert.equal(client.pendingRecovery,pending);
  assert.throws(()=>client.setItem('key','value'),/Pending browser edits/);assert.equal(browser.getItem(client.recoveryKey),pending);
+});
+
+test('Tailscale configuration accepts only an explicit HTTPS device origin', () => {
+ assert.equal(normalizeTailscaleOrigin(undefined), '');
+ assert.equal(normalizeTailscaleOrigin('https://reader.example-tail.ts.net/'), 'https://reader.example-tail.ts.net');
+ assert.equal(normalizeTailscaleOrigin('https://reader.example-tail.ts.net:8443'), 'https://reader.example-tail.ts.net:8443');
+ for (const value of ['', null, 'http://reader.example-tail.ts.net', 'https://evil.example',
+  'https://*.example-tail.ts.net', 'https://reader.example-tail.ts.net.evil.example',
+  'https://reader.example-tail.ts.net:0', 'https://user:pass@reader.example-tail.ts.net',
+  'https://reader.example-tail.ts.net/reader/', 'https://reader.example-tail.ts.net?query',
+  'https://reader.example-tail.ts.net#fragment']) assert.throws(() => normalizeTailscaleOrigin(value), /tailscale-origin/);
+});
+
+test('private proxy access retains exact Host, Origin, token, file and range boundaries', async () => {
+ const root = await mkdtemp(join(tmpdir(), 'reader-tailscale-'));
+ let server;
+ try {
+  const c = { ...chapter, audioPath: join(root, 'recording.mp3') };
+  await writeFile(c.audioPath, 'audio');
+  await writeFile(join(root, 'inputs.json'), JSON.stringify({ ...data, chapters: [c] }));
+  await writeFile(join(root, 'index.html'), '<!doctype html>reader');
+  const remote = 'https://reader.example-tail.ts.net';
+  const call = (path, headers = {}, body) => new Promise((resolve, reject) => {
+   const req = request({ hostname: '127.0.0.1', port: server.address().port, path,
+    method: body === undefined ? 'GET' : 'POST', headers }, res => {
+    const chunks = []; res.on('data', chunk => chunks.push(chunk));
+    res.on('error', reject); res.on('end', () => resolve({ status: res.statusCode,
+     headers: res.headers, text: Buffer.concat(chunks).toString() }));
+   });
+   req.on('error', reject); req.end(body === undefined ? undefined : JSON.stringify(body));
+  });
+  server = await createReaderServer(root);
+  await new Promise(r => server.listen(0, '127.0.0.1', r));
+  assert.equal((await call('/reader/', { Host: new URL(remote).host })).status, 403);
+  let fingerprint = JSON.parse((await call('/reader/api/identity')).text).fingerprint;
+  await new Promise(r => server.close(r)); server = null;
+
+  for (const tailscaleOrigin of [remote, `${remote}:8443`]) {
+   server = await createReaderServer(root, { tailscaleOrigin });
+   await new Promise(r => server.listen(0, '127.0.0.1', r));
+   const local = `http://127.0.0.1:${server.address().port}`;
+   const host = new URL(tailscaleOrigin).host, proxy = { Host: host, Origin: tailscaleOrigin };
+   const localSession = JSON.parse((await call('/reader/api/session')).text);
+   const remoteSession = JSON.parse((await call('/reader/api/session', proxy)).text);
+   assert.deepEqual(remoteSession, localSession);
+   const identity = JSON.parse((await call('/reader/api/identity', proxy)).text);
+   assert.notEqual(identity.fingerprint, fingerprint); fingerprint = identity.fingerprint;
+   assert.equal((await call('/reader/', proxy)).status, 200);
+   const audio = await call('/mp3/chapter-01.mp3', { ...proxy, Range: 'bytes=1-3' });
+   assert.equal(audio.status, 206); assert.equal(audio.text, 'udi');
+   assert.equal(audio.headers['content-range'], 'bytes 1-3/5');
+   for (const path of ['/reader/inputs.json', '/reader/notes/reader.sqlite', '/reader/history/index.html'])
+    assert.equal((await call(path, proxy)).status, 404);
+   for (const headers of [
+    { ...proxy, Host: 'evil.example' },
+    { ...proxy, Host: `${host}.evil.example`, 'X-Forwarded-Host': host, 'X-Forwarded-Proto': 'https' },
+    { ...proxy, Host: new URL(local).host },
+    { ...proxy, Origin: local },
+    { ...proxy, Origin: 'https://evil.example' },
+    { ...proxy, 'Sec-Fetch-Site': 'cross-site' },
+    { ...proxy, Host: `${new URL(remote).hostname}:8444` }
+   ]) assert.equal((await call('/reader/api/session', headers)).status, 403);
+   const headers = { ...proxy, 'Content-Type': 'application/json', 'X-Reader-Token': remoteSession.token };
+   const body = { records: fullRecords(), revision: remoteSession.revision };
+   assert.equal((await call('/reader/api/save', { ...headers, 'X-Reader-Token': 'wrong' }, body)).status, 403);
+   const withoutOrigin = { ...headers }; delete withoutOrigin.Origin;
+   assert.equal((await call('/reader/api/save', withoutOrigin, body)).status, 403);
+   assert.equal((await call('/reader/api/save', { ...headers, Origin: 'https://evil.example' }, body)).status, 403);
+   assert.equal((await call('/reader/api/save', headers, body)).status, 200);
+   const saved = JSON.parse((await call('/reader/api/session')).text);
+   assert.deepEqual(saved.records, body.records);
+   // The unchanged localhost workflow still writes to the very same database.
+   assert.equal((await call('/reader/api/save', { 'Content-Type': 'application/json',
+    Origin: local, 'X-Reader-Token': saved.token }, { records: saved.records, revision: saved.revision })).status, 200);
+   await new Promise(r => server.close(r)); server = null;
+  }
+ } finally { if (server) await new Promise(r => server.close(r)); await rm(root, { recursive: true, force: true }); }
 });

@@ -10,6 +10,16 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 const sha = data => createHash('sha256').update(data).digest('hex');
+export function normalizeTailscaleOrigin(value) {
+  if (value === undefined) return '';
+  try {
+    const url = new URL(value);
+    if (url.protocol === 'https:' && /^[a-z0-9-]+\.[a-z0-9-]+\.ts\.net$/.test(url.hostname) &&
+        !url.username && !url.password && url.port !== '0' &&
+        (value === url.origin || value === `${url.origin}/`)) return url.origin;
+  } catch { /* Report the same configuration error for malformed URLs. */ }
+  throw Error('Use --tailscale-origin https://DEVICE.TAILNET.ts.net[:PORT] with no path, credentials, query or fragment');
+}
 export function byteRange(header, size) {
   if (!header) return { start: 0, end: size - 1, status: 200 };
   const m = /^bytes=(\d*)-(\d*)$/.exec(header);
@@ -19,7 +29,9 @@ export function byteRange(header, size) {
   if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || start > end || start >= size) throw Error('Unsatisfiable range');
   return { start, end, status: 206 };
 }
-export async function createReaderServer(directory) {
+export async function createReaderServer(directory, { tailscaleOrigin } = {}) {
+  const remoteOrigin = normalizeTailscaleOrigin(tailscaleOrigin);
+  const remoteHost = remoteOrigin ? new URL(remoteOrigin).host : '';
   const root = await realpath(directory), run = dirname(root);
   const inputs = JSON.parse(await readFile(resolve(root, 'inputs.json'), 'utf8'));
   const chapters = new Map(inputs.chapters.map(c => [c.id, c]));
@@ -35,16 +47,18 @@ export async function createReaderServer(directory) {
   };
   const server = http.createServer(async (req, res) => {
     try {
-      // Reject DNS rebinding / cross-origin probes. No CORS and no write endpoints.
-      if (!/^127\.0\.0\.1:\d+$/.test(req.headers.host || '')) { res.writeHead(403); res.end(); return; }
-      const origin = `http://127.0.0.1:${server.address().port}`;
-      if (req.headers.host !== new URL(origin).host) { res.writeHead(403); res.end(); return; }
+      // Admit only the bound loopback authority and the explicitly configured Serve
+      // authority. Forwarded headers never grant access; writes still need Origin/token.
+      const localOrigin = `http://127.0.0.1:${server.address().port}`;
+      const origin = req.headers.host === new URL(localOrigin).host ? localOrigin :
+        remoteHost && req.headers.host === remoteHost ? remoteOrigin : '';
+      if (!origin) { res.writeHead(403); res.end(); return; }
       if (req.url.startsWith('/reader/api/')) {
         const json = (status, value) => { res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Cross-Origin-Resource-Policy': 'same-origin', 'X-Content-Type-Options': 'nosniff' }); res.end(JSON.stringify(value)); };
         try {
           if ((req.headers.origin && req.headers.origin !== origin) || req.headers['sec-fetch-site'] === 'cross-site') return json(403, { error: 'Same-origin access required' });
           const route = req.url.slice('/reader/api/'.length);
-          if (req.method === 'GET' && route === 'identity') return json(200, { application: 'local-chapter-reader', version: 2, fingerprint: sha(root + JSON.stringify(inputs) + runtimeHash) });
+          if (req.method === 'GET' && route === 'identity') return json(200, { application: 'local-chapter-reader', version: 2, fingerprint: sha(root + JSON.stringify(inputs) + runtimeHash + remoteOrigin) });
           if (req.method === 'GET' && route === 'session') return json(200, { ...database.read(), token: apiToken, databasePath: database.path });
           if (req.method === 'GET' && route === 'backup') return json(200, database.backup());
           if (req.method !== 'POST') return json(405, { error: 'Unsupported action' });
@@ -105,13 +119,14 @@ export async function createReaderServer(directory) {
   return server;
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const { values } = parseArgs({ options: { port: { type: 'string' }, dir: { type: 'string' }, open: { type: 'boolean' } } });
+  const { values } = parseArgs({ options: { port: { type: 'string' }, dir: { type: 'string' }, open: { type: 'boolean' }, 'tailscale-origin': { type: 'string' } } });
+  const remoteOrigin = normalizeTailscaleOrigin(values['tailscale-origin']);
   // A required stable port avoids quietly opening an origin with different saved notes.
   const port = Number(values.port);
   if (!values.port || !Number.isInteger(port) || port < 0 || port > 65535) throw Error('Use --port YOUR_ASSIGNED_PORT (or --port 0 for isolated tests only)');
   const directory = values.dir || dirname(fileURLToPath(import.meta.url));
   const origin = `http://127.0.0.1:${port}`;
-  const fingerprint = sha(await realpath(directory) + await readFile(resolve(directory, 'inputs.json'), 'utf8').then(s => JSON.stringify(JSON.parse(s))) + sha(await readFile(fileURLToPath(import.meta.url))));
+  const fingerprint = sha(await realpath(directory) + await readFile(resolve(directory, 'inputs.json'), 'utf8').then(s => JSON.stringify(JSON.parse(s))) + sha(await readFile(fileURLToPath(import.meta.url))) + remoteOrigin);
   const openBrowser = url => {
     const command = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'explorer.exe' : 'xdg-open';
     const child = spawn(command, [url], { detached: true, stdio: 'ignore' });
@@ -126,7 +141,12 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       }
     } catch { /* A free port is normal. Binding still refuses unrelated processes. */ }
   }
-  const server = await createReaderServer(directory);
+  const server = await createReaderServer(directory, { tailscaleOrigin: values['tailscale-origin'] });
   server.on('error', error => { console.error(error.code === 'EADDRINUSE' ? 'Assigned port is occupied. Keep the stable port and check its owner; do not stop an unknown process.' : error.message); server.emit('close'); process.exitCode = 1; });
-  server.listen(port, '127.0.0.1', () => { const url=`http://127.0.0.1:${server.address().port}/reader/`; console.log(`Chapter reader: ${url}`); if(values.open)openBrowser(url); });
+  server.listen(port, '127.0.0.1', () => {
+    const url = `http://127.0.0.1:${server.address().port}/reader/`;
+    console.log(`Chapter reader: ${url}`);
+    if (remoteOrigin) console.log(`Allowed Tailscale origin: ${remoteOrigin} (configure Tailscale Serve separately)`);
+    if (values.open) openBrowser(url);
+  });
 }
