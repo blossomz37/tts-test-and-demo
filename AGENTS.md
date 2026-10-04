@@ -50,6 +50,12 @@ Cached model assets can be evicted. Offline use requires preparation and success
 
 Use the existing Electric Creative tokens: square controls, Hanken UI/body, Bricolage headings, Anton masthead, purple comment underlines, ember actions and visible focus. Keep active controls at least 44px tall. Ship font licenses with the fonts.
 
+The recorded reader in `reader/` uses the approved Quiet Manuscript direction in
+`docs/READER_VISUAL_DESIGN_BRIEF.md`: warm neutral surfaces, green playback,
+plum annotation underlines, blue selection/focus, and serif/sans reading choices.
+Its styles remain independent of the main demo and research viewer. Honor saved
+appearance preferences and preserve exact source text through visual changes.
+
 ## Verification and repository boundary
 
 Run npm test and npm run build after relevant app changes. Check real browser playback, progress, pause/resume/stop, draft recovery, comment edit/delete, mixed/general-only exports and narrow layouts when those flows change. Unit tests use fixtures/long.txt and fixtures/edge.txt; never reintroduce a private chapter dependency.

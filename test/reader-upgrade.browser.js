@@ -25,7 +25,7 @@ async (page) => {
   await page.getByRole('button',{name:'Dictate notes',exact:true}).click();await page.waitForFunction(()=>window.__recognitions.length===1);
   check(await page.evaluate(()=>window.__recognitions[0].processLocally===true),'Local recognition required');
   await page.evaluate(()=>{window.__speech('interim',false);window.__speech('Final words.');window.__speech('Final words.');});
-  await page.getByRole('button',{name:'Stop dictation',exact:true}).click();await saved();
+  await page.getByRole('button',{name:'Listening · Stop',exact:true}).click();await saved();
   check(await page.getByRole('textbox',{name:'General notes',exact:true}).inputValue()==='Database note\nSecond line Final words.','Dictation routing/deduplication');
   await select();await page.getByRole('button',{name:'Comment on selection',exact:true}).click();
   await page.getByRole('textbox',{name:'Comment draft',exact:true}).fill('Review this phrasing');await page.locator('#comment-category').selectOption('wording');await page.getByRole('button',{name:'Save comment',exact:true}).click();await saved();
@@ -64,7 +64,7 @@ async (page) => {
   const nav=await page.locator('.chapter-navigation').boundingBox(),prev=await page.locator('#previous-chapter').boundingBox(),next=await page.locator('#next-chapter').boundingBox();check(Math.abs(prev.y-next.y)<1&&prev.x>=nav.x&&next.x+next.width<=nav.x+nav.width+1,'Chapter buttons stay paired on narrow screens');
   await page.getByRole('button',{name:'Search & book tools',exact:true}).click();await page.getByRole('button',{name:'Resume draft',exact:true}).click();check(await page.locator('#compact-player').isVisible()===false,'Compact player hidden while typing');
   await page.getByRole('button',{name:'Back · keep draft',exact:true}).click();await saved();await page.locator('#comments').scrollIntoViewIfNeeded();await page.locator('#compact-player').waitFor({state:'visible'});
-  await page.getByRole('button',{name:'Play narration — compact player',exact:true}).click();await page.waitForFunction(()=>!document.getElementById('audio').paused);await page.getByRole('button',{name:'Pause narration — compact player',exact:true}).click();await page.waitForFunction(()=>document.getElementById('audio').paused);
+  await page.getByRole('button',{name:'Resume narration — compact player',exact:true}).click();await page.waitForFunction(()=>!document.getElementById('audio').paused);await page.getByRole('button',{name:'Pause narration — compact player',exact:true}).click();await page.waitForFunction(()=>document.getElementById('audio').paused);
   check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Compact layout no horizontal overflow');await page.setViewportSize({width:1280,height:900});await saved();
   const browser=page.context().browser(), fresh=await browser.newContext(), other=await fresh.newPage();
   try {await other.goto(page.url());await other.waitForFunction(()=>!document.getElementById('play').disabled);await other.waitForFunction(()=>document.getElementById('storage-status').textContent==='Reader data saved to local database.');

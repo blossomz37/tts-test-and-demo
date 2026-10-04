@@ -4,7 +4,7 @@ export const selectedKey = bookId => `chapter-reader:v1:${encodeURIComponent(boo
 export const reviewKey = (bookId, chapter) => `chapter-reader:v1:${encodeURIComponent(bookId)}:${chapter.id}:review:${chapter.source.sha256}:${chapter.audioSha256}`;
 export const categories = ['', 'wording', 'continuity', 'pacing', 'audio issue'];
 export function validatePreferences(p) {
-  if (!p || ![.75, 1, 1.25, 1.5, 2].includes(p.speed) || typeof p.follow !== 'boolean' || typeof p.focus !== 'boolean' || ![16, 19, 22, 25].includes(p.fontSize) || ![1.5, 1.8, 2.1].includes(p.lineHeight) || ![620, 760, 920].includes(p.width) || !['light', 'dark'].includes(p.theme)) throw Error('Invalid reading preferences');
+  if (!p || ![.75, 1, 1.25, 1.5, 2].includes(p.speed) || typeof p.follow !== 'boolean' || typeof p.focus !== 'boolean' || ![16, 19, 20, 22, 25].includes(p.fontSize) || ![1.5, 1.6, 1.8, 2.1].includes(p.lineHeight) || ![620, 760, 920].includes(p.width) || !['light', 'dark'].includes(p.theme) || (p.readingFont !== undefined && !['serif', 'sans'].includes(p.readingFont))) throw Error('Invalid reading preferences');
 }
 export function validateRecords(data, records) {
   if (!records || Array.isArray(records) || typeof records !== 'object') throw Error('Invalid book records');

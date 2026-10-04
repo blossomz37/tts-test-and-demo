@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file:; style-src 'self' file:; font-src 'self' file:; media-src 'self' file: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'">
-  <meta name="theme-color" content="#252326"><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="manifest" href="manifest.webmanifest"><title>Local chapter reader</title><link rel="stylesheet" href="style.css">
+  <meta name="theme-color" content="#F4F1EA"><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="manifest" href="manifest.webmanifest"><title>Local chapter reader</title><link rel="stylesheet" href="style.css">
   <script defer src="data.js"></script><script defer src="app.js"></script>
 </head>
 <body>
-  <header><span class="local">LOCAL CHAPTER READER</span></header>
+  <header><span class="local">Local chapter reader</span></header>
   <main>
-    <div class="book-heading"><div><p class="eyebrow">READ · LISTEN · ANNOTATE</p><h1 id="book-title">Chapter reader</h1></div><div class="actions"><button id="focus-toggle" aria-pressed="false">Focus view</button><button id="tools-toggle" aria-expanded="false" aria-controls="tools">Search & book tools</button></div></div>
+    <div class="book-heading"><div><h1 id="book-title">Chapter reader</h1></div><div class="actions"><button id="focus-toggle" aria-pressed="false">Focus view</button><button id="tools-toggle" aria-expanded="false" aria-controls="tools">Search & book tools</button></div></div>
     <section class="transport" aria-label="Playback controls">
       <div class="transport-row">
         <div class="chapter-navigation" id="chapter-navigation" role="group" aria-label="Chapter navigation"><label class="chapter-control">Chapter<select id="chapter"></select></label><button id="previous-chapter" aria-label="Previous chapter">Previous</button><button id="next-chapter" aria-label="Next chapter">Next</button></div>
@@ -23,9 +23,10 @@
     <p id="action-status" role="status" class="notice"></p>
     <section id="tools" class="tools" hidden aria-label="Book tools">
       <details><summary>Reading settings</summary><div class="settings-grid">
-        <label>Text size<select id="font-size"><option value="16">Small</option><option value="19" selected>Medium</option><option value="22">Large</option><option value="25">Extra large</option></select></label>
-        <label>Line spacing<select id="line-height"><option value="1.5">Compact</option><option value="1.8" selected>Comfortable</option><option value="2.1">Spacious</option></select></label>
-        <label>Reading width<select id="reading-width"><option value="620">Narrow</option><option value="760" selected>Medium</option><option value="920">Wide</option></select></label>
+        <label>Reading font<select id="reading-font"><option value="serif" selected>Serif</option><option value="sans">Sans serif</option></select></label>
+        <label>Text size<select id="font-size"><option value="16">Small</option><option value="19">19 px</option><option value="20" selected>Medium · 20 px</option><option value="22">Large</option><option value="25">Extra large</option></select></label>
+        <label>Line spacing<select id="line-height"><option value="1.5">Compact</option><option value="1.6" selected>Comfortable · 1.6</option><option value="1.8">Relaxed · 1.8</option><option value="2.1">Spacious</option></select></label>
+        <label>Reading width<select id="reading-width"><option value="620" selected>Narrow</option><option value="760">Medium</option><option value="920">Wide</option></select></label>
         <label>Appearance<select id="theme"><option value="light">Light</option><option value="dark">Dark</option></select></label>
         <button id="restart" disabled>Start chapter over</button>
       </div></details>
@@ -47,7 +48,7 @@
       </details>
     </section>
     <div class="workspace">
-      <section class="reading" aria-label="Chapter text"><div class="reading-heading"><h2 id="chapter-title">Chapter</h2><div class="actions"><button id="listen-selection" disabled>Listen from here</button><button id="comment-selection" disabled>Comment on selection</button></div></div><div class="chapter-review"><label><input id="chapter-reviewed" type="checkbox"> Chapter reviewed</label><button id="bookmark">Bookmark position</button></div><div id="bookmarks"></div><div id="passage" tabindex="0"></div></section>
+      <section class="reading" aria-label="Chapter text"><div class="reading-heading"><h2 id="chapter-title">Chapter</h2><div class="actions"><button id="listen-selection" disabled>Listen from here</button><button id="comment-selection" disabled>Comment on selection</button></div></div><div class="chapter-review"><label><input id="chapter-reviewed" type="checkbox"> Chapter reviewed</label><button id="bookmark">Bookmark position</button></div><div id="bookmarks"></div><div class="passage-frame"><span id="playback-position" class="playback-position" aria-hidden="true" hidden></span><div id="passage" tabindex="0"></div></div></section>
       <aside aria-label="Notes and comments">
         <section class="notes-panel"><h2>Chapter notes</h2><label class="sr-only" for="notes">General notes</label><textarea id="notes" rows="7" placeholder="What stands out in this chapter?"></textarea><button id="dictate-notes">Dictate notes</button><p id="notes-interim" class="interim" aria-live="polite"></p><p id="dictation-status" role="status"></p></section>
         <p id="storage-status" role="status"></p><button id="recovery" hidden>Export recovery data</button>

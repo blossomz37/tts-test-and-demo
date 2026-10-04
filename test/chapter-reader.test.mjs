@@ -8,9 +8,31 @@ import { narrationMap, mapAlignment, activeCues } from '../reader/alignment.mjs'
 import { SidecarStore, readPosition, positionKey } from '../reader/state.mjs';
 import { hash, inspectInputs } from '../reader/inputs.mjs';
 import { byteRange, createReaderServer } from '../reader/serve.mjs';
+import { sentenceCueAnchors, playbackAction, shouldFollowAudio } from '../reader/reading-state.mjs';
 
 const source = { id: 'chapter-01', text: 'One 🪶 two.\n\n***\n\nOne more.', sha256: 'source-a' };
 const chapter = { id: source.id, source, audioSha256: 'audio-a', narrationSha256: 'narration-a', duration: 10 };
+test('sentence marker groups exact UTF-16 cues without changing multiline source or timing', () => {
+  const text = 'One 🪶 two.\n“Three four!” Fifth\nword.';
+  const cues = [...text.matchAll(/One|🪶|two|Three|four|Fifth|word/gu)].map((m, i) => ({ from: m.index, to: m.index + m[0].length, start: i, displayEnd: i + .8 }));
+  const original = structuredClone(cues), expected = [0, 0, 0, 3, 3, 5, 5];
+  assert.deepEqual(sentenceCueAnchors(text, cues), expected);
+  assert.deepEqual(sentenceCueAnchors(text, cues, null), expected);
+  assert.deepEqual(cues, original);
+  assert.equal(text.slice(cues[1].from, cues[1].to), '🪶');
+  assert.deepEqual(sentenceCueAnchors('', [], null), []);
+  const withUntimedHeading = 'Chapter\n\nOne two.';
+  assert.deepEqual(sentenceCueAnchors(withUntimedHeading, [{ from: 9, to: 12 }, { from: 13, to: 17 }]), [0, 0]);
+});
+test('paused positions offer Resume and follow scrolling yields to editing and selection', () => {
+  assert.equal(playbackAction(true, false, 0), 'Play');
+  assert.equal(playbackAction(true, false, 3.5), 'Resume');
+  assert.equal(playbackAction(false, false, 3.5), 'Pause');
+  assert.equal(playbackAction(true, true, 10), 'Play');
+  const state = { follow: true, activeIndex: 4, lastFollow: 3, selectionCollapsed: true, editing: false };
+  assert.equal(shouldFollowAudio(state), true);
+  for (const override of [{ editing: true }, { selectionCollapsed: false }, { follow: false }, { activeIndex: -1 }, { lastFollow: 4 }]) assert.equal(shouldFollowAudio({ ...state, ...override }), false);
+});
 class Storage {
   map = new Map(); fail = false;
   getItem(key) { return this.map.get(key) ?? null; }

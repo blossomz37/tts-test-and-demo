@@ -2,7 +2,7 @@
 
 Date: 2026-10-04
 
-Status: proposed design direction; no application changes made in this pass.
+Status: implemented and delivered on 2026-10-04.
 
 Scope: the recorded chapter reader in `reader/`.
 
@@ -124,4 +124,52 @@ Then conduct a 25–30-minute personal session: listen continuously, pause three
 
 Success means the author wants to continue working, can relocate playback promptly, understands every mark, and can revise without disrupting the reading context. Contrast and reduced-motion checks are necessary constraints; personal sustained comfort decides whether this visual direction is right.
 
-This design brief is complete. Theme implementation, new appearance settings, and interaction changes are subsequent work. The application's current theme and behavior remain unchanged by this pass.
+## Implementation record
+
+The author approved implementation after reviewing this brief and its palette study.
+
+- **Scope:** apply Quiet Manuscript to the recorded reader, including light/dark colors, reading typography with a serif/sans choice, quieter controls, clear overlapping highlights, retained playback position, and reduced-motion behavior. Preserve notes, exact source anchors, recordings, backups, and existing appearance choices. The main demo and research viewer retain their own design.
+- **Owners:** the primary agent owns CSS, integration, generated-reader delivery, and closeout. A frontend implementation agent owns reader markup, appearance preference validation, and playback/editor state hooks. Fresh independent reviewers own screenshot-based reading/visual and accessibility/state reviews. Reviewers are read-only and receive a neutral description rather than implementation rationale.
+- **Protocols:** scope control and evidence-classified UI review. The approved brief is the scope baseline. The primary agent resolves routine implementation details; changes to storage authority, manuscript/audio identity, or feature scope return to the author. No new dependencies or broad refactor are planned.
+- **Omitted roles:** no backend redesign, security redesign, or new information architecture is needed. Existing persistence contracts are retained; preference compatibility is checked in the established validators and tests.
+- **Acceptance:** existing tests/build, targeted browser playback and annotation checks, saved preference/backup compatibility, light/dark and narrow screenshots, independent reviews, regeneration with verified existing alignments, and preserved reader records. Personal long-session comfort remains the author's evaluation.
+- **Deferred:** custom keyboard shortcuts, headphone/system media controls, unrelated search/restore enhancements, and server-free offline use.
+
+### Delivery and evidence
+
+Implemented the light/dark palette, serif/sans preference, quiet controls and surfaces,
+word and sentence-position cues, Resume labels, explicit dictation status, and
+editing-aware follow behavior. Legacy size, spacing, width and theme values remain
+valid; the optional reading-font field uses the existing backup record format.
+
+- All 47 Node tests and the build pass, both in the working checkout and a checkout
+  containing only Git-visible inputs. Offline dependency installation also passed.
+- Targeted browser checks passed for real playback and rewind, paused gaps, exact
+  source text, overlapping comment/selection highlights, Save versus draft behavior,
+  reload recovery, serif/sans and theme persistence, and preference/draft restoration
+  through the actual backup UI. Dictation used controlled recognition events.
+- Large text at 390px and 320px widths had no horizontal overflow. Phone Focus
+  options and compact playback worked; the compact player stayed hidden while
+  typing. Keyboard focus was visible, and reduced-motion emulation removed button
+  transitions. These checks are not a complete assistive-technology audit.
+- Independent code review found two stale browser-harness action labels; these
+  were corrected and their corresponding interactions verified in the browser.
+- Two fresh-context screenshot reviewers found no material visual or state-clarity
+  blocker. Follow-up images confirmed active playback and complete restore actions.
+  Their optional suggestions were less control density in ordinary view and a
+  compact scrolled desktop transport. Those are deferred; Focus view already
+  supplies a quieter reading surface.
+- Regenerated the user's reader with existing verified alignments and restarted
+  only its known launcher. All saved reader records and all 14 chapter input
+  identities were preserved. The served app, stylesheet, markup and icon match the
+  tested files byte for byte.
+
+Private screenshots, browser observations, the recovery backup and delivery hashes
+remain outside Git in `output/playwright/quiet-manuscript-2026-10-04/`. The full
+legacy Playwright CLI acceptance script was not rerun wholesale in this pass;
+the listed browser checks ran through the in-app browser. Physical-phone keyboard
+behavior, screen-reader use and the author's long-session comfort remain untested.
+
+Implementation is complete. The remaining personal evaluation is to read and
+annotate a chapter in the new appearance and adjust the saved reading settings
+to taste.

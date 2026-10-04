@@ -88,6 +88,14 @@ Follow audio scrolls when the active word moves out of view; turn it off to brow
 The display preserves source punctuation, whitespace, paragraphs and scene breaks.
 Markdown is displayed as source text rather than interpreted HTML.
 
+The Quiet Manuscript design uses warm neutral surfaces, green playback cues,
+plum comment underlines, and blue selection. The sentence gutter marker retains
+the listening location while paused. Under **Search & book tools → Reading
+settings**, choose serif or sans-serif text, size, spacing, width, and light/dark
+appearance. Existing saved appearance choices and older backups remain supported;
+the new reading-font choice defaults to serif. A fresh reader follows the system
+theme until an appearance choice is saved. See the [visual design brief](../docs/READER_VISUAL_DESIGN_BRIEF.md).
+
 ## Alignment provenance
 
 The aligner follows [stable-ts forced alignment](https://github.com/jianfch/stable-ts#alignment)

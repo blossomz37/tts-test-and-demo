@@ -3,6 +3,7 @@ import { mountWorkspace } from './workspace.mjs';
 import { anchor, snapToWords, relativeTime } from '../src/comments.mjs';
 import { Dictation, appendTranscript } from '../src/dictation.mjs';
 import { SidecarStore, positionKey, readPosition } from './state.mjs';
+import { sentenceCueAnchors, playbackAction, shouldFollowAudio } from './reading-state.mjs';
 
 const data = window.CHAPTER_READER, $ = id => document.getElementById(id), audio = $('audio');
 let chapter, store, spans = [], selected = null, epoch = 0, raf = 0, loaded = false, ready = false;
@@ -13,6 +14,7 @@ const selectionKey = `chapter-reader:v1:${encodeURIComponent(data.bookId)}:selec
 let selectionBlocked = false;
 let storage, browserStorage, workspace, databaseUnavailable = '', mutationBusy = false;
 let cueEvents = [], eventCursor = 0, previousTime = -1, activeSpans = new Set();
+let sentenceAnchors = [], positionCue = -1, markerSentence = -1, markerLayoutDirty = true;
 try { storage = window.localStorage; } catch {
   storage = { getItem() { throw Error('Browser storage is unavailable'); }, setItem() { throw Error('Browser storage is unavailable'); } };
 }
@@ -57,7 +59,7 @@ function rangeFor(target) {
 function mark(target) {
   if (!globalThis.CSS?.highlights) return;
   CSS.highlights.delete('comment-target');
-  if (target) CSS.highlights.set('comment-target', new Highlight(rangeFor(target)));
+  if (target) { const highlight = new Highlight(rangeFor(target)); highlight.priority = 2; CSS.highlights.set('comment-target', highlight); }
 }
 function locate(target) {
   mark(target);
@@ -66,7 +68,7 @@ function locate(target) {
 }
 function showComposer() {
   const draft = store.state.draft; if (!draft) return;
-  composerOpen = true; $('composer').hidden = false; $('resume-draft').hidden = true;
+  composerOpen = true; document.body.classList.add('composer-open'); $('composer').hidden = false; $('resume-draft').hidden = true;
   $('composer-title').textContent = draft.commentId ? 'Edit comment' : 'Comment on selection';
   $('comment-category').value = draft.category || '';
   $('quote').textContent = draft.anchor.quote; $('comment-body').value = draft.body;
@@ -76,7 +78,7 @@ function renderComments(selectedId) {
   const comments = store.state.comments;
   $('comment-count').textContent = comments.length ? `(${comments.length})` : '';
   $('empty-comments').hidden = comments.length > 0;
-  if (globalThis.CSS?.highlights) CSS.highlights.set('saved-comments', new Highlight(...comments.map(c => rangeFor(c.anchor))));
+  if (globalThis.CSS?.highlights) { const highlight = new Highlight(...comments.map(c => rangeFor(c.anchor))); highlight.priority = 1; CSS.highlights.set('saved-comments', highlight); }
   $('comments').replaceChildren(...comments.map(c => {
     const card = document.createElement('article'); card.className = `comment-card${c.resolved ? ' resolved' : ''}${c.id === selectedId ? ' selected' : ''}`; card.dataset.id = c.id;
     const quote = document.createElement('blockquote'); quote.textContent = c.anchor.quote;
@@ -109,7 +111,7 @@ function renderComments(selectedId) {
   if (selectedId) $('comments').querySelector('.selected')?.scrollIntoView({block:'nearest'});
   workspace?.renderBook();
 }
-function closeComposer() { composerOpen = false; $('composer').hidden = true; $('resume-draft').hidden = !store.state.draft; mark(null); }
+function closeComposer() { composerOpen = false; document.body.classList.remove('composer-open'); $('composer').hidden = true; $('resume-draft').hidden = !store.state.draft; mark(null); }
 async function mutateSaved(action) {
   if (mutationBusy || storage.blocked) return;
   pauseForWriting(); mutationBusy = true; storageStatus();
@@ -148,8 +150,9 @@ const dictation = new Dictation({ Recognition: window.SpeechRecognition || windo
     const active = event.state !== 'idle';
     for (const [id, field, label] of [['dictate-notes', 'notes', 'Dictate notes'], ['dictate-comment', 'comment', 'Dictate comment']]) {
       const own = active && dictationTarget?.field === field;
-      $(id).textContent = own ? (event.state === 'preparing' ? 'Cancel setup' : 'Stop dictation') : label;
+      $(id).textContent = own ? (event.state === 'preparing' ? 'Cancel setup' : event.state === 'listening' ? 'Listening · Stop' : 'Stop dictation') : label;
       $(id).setAttribute('aria-pressed', String(own));
+      $(id).dataset.listening = String(own && event.state === 'listening');
     }
     if (store) storageStatus();
   }
@@ -173,30 +176,50 @@ function renderPassage() {
   fragment.append(document.createTextNode(chapter.source.text.slice(cursor))); $('passage').replaceChildren(fragment);
   if ($('passage').textContent !== chapter.source.text) throw Error('Text preservation check failed');
   cueEvents = spans.flatMap((item,i) => [{time:item.cue.start, i, enter:true}, {time:item.cue.displayEnd, i, enter:false}]).sort((a,b)=>a.time-b.time || Number(a.enter)-Number(b.enter));
-  eventCursor=0; previousTime=-1; activeSpans=new Set();
+  sentenceAnchors = sentenceCueAnchors(chapter.source.text, chapter.cues);
+  eventCursor=0; previousTime=-1; activeSpans=new Set(); positionCue=-1; markerSentence=-1; markerLayoutDirty=true;
 }
+function updatePositionMarker() {
+  const marker = $('playback-position'), sentence = sentenceAnchors[positionCue];
+  marker.hidden = !ready || audio.ended || sentence === undefined;
+  if (marker.hidden || sentence === markerSentence && !markerLayoutDirty) return;
+  // A sentence's first verified word supplies a stable gutter position. This is
+  // a geometry read on sentence/layout changes, never a per-frame source scan.
+  const rect = spans[sentence].span.getClientRects()[0];
+  if (!rect) { marker.hidden = true; return; }
+  marker.style.top = `${rect.top - marker.parentElement.getBoundingClientRect().top}px`;
+  markerSentence = sentence; markerLayoutDirty = false;
+}
+function refreshPositionLayout() { markerLayoutDirty = true; updatePositionMarker(); }
+if (globalThis.ResizeObserver) new ResizeObserver(refreshPositionLayout).observe($('passage'));
+window.addEventListener('resize', refreshPositionLayout);
+document.fonts?.ready.then(refreshPositionLayout);
 function update() {
   if (!chapter) return;
   const t = loaded ? audio.currentTime || 0 : pendingPosition, duration = chapter.duration;
   $('seek').max = duration; $('seek').value = t; $('elapsed').textContent = time(t); $('duration').textContent = time(duration);
   $('seek').setAttribute('aria-valuetext', `${time(t)} of ${time(duration)}`);
   $('remaining').textContent = `${time(Math.max(0, duration - t) / Number($('speed').value))} remaining`;
-  if (t < previousTime || !ready || audio.ended) { for (const i of activeSpans) spans[i]?.span.classList.remove('current'); activeSpans.clear(); eventCursor=0; }
+  if (t < previousTime || !ready || audio.ended) { for (const i of activeSpans) spans[i]?.span.classList.remove('current'); activeSpans.clear(); eventCursor=0; positionCue=-1; }
   if (ready && !audio.ended) while(eventCursor < cueEvents.length && cueEvents[eventCursor].time <= t) {
     const event=cueEvents[eventCursor++];
-    if(event.enter) activeSpans.add(event.i); else activeSpans.delete(event.i);
+    if(event.enter) { activeSpans.add(event.i); positionCue=event.i; } else activeSpans.delete(event.i);
     spans[event.i].span.classList.toggle('current',event.enter);
   }
   previousTime=t; const activeIndex=activeSpans.size ? Math.max(...activeSpans) : -1;
-  if ($('follow').checked && activeIndex >= 0 && activeIndex !== lastFollow && getSelection().isCollapsed) {
+  updatePositionMarker();
+  const editing = composerOpen || dictation.state !== 'idle' || !!document.activeElement?.matches('textarea,input:not([type=range]):not([type=checkbox])');
+  if (shouldFollowAudio({ follow: $('follow').checked, activeIndex, lastFollow, selectionCollapsed: getSelection().isCollapsed, editing })) {
     lastFollow = activeIndex;
     const el = spans[activeIndex].span, rect = el.getBoundingClientRect(), top = document.querySelector('.transport').getBoundingClientRect().bottom;
     if (rect.top < top + 35 || rect.bottom > innerHeight - 70) el.scrollIntoView({ block: 'center', behavior: 'instant' });
   }
-  $('play').textContent = audio.paused ? 'Play' : 'Pause';
-  $('play').setAttribute('aria-label', audio.paused ? 'Play narration' : 'Pause narration');
-  $('compact-play').textContent=audio.paused?'Play':'Pause';
-  $('compact-play').setAttribute('aria-label', `${audio.paused?'Play':'Pause'} narration — compact player`);
+  const action = playbackAction(audio.paused, audio.ended, t);
+  document.body.dataset.playback = audio.ended ? 'finished' : !audio.paused ? 'playing' : t > 0 ? 'paused' : 'ready';
+  $('play').textContent = action;
+  $('play').setAttribute('aria-label', `${action} narration`);
+  $('compact-play').textContent=action;
+  $('compact-play').setAttribute('aria-label', `${action} narration — compact player`);
   for(const id of ['compact-play','compact-rewind','compact-forward'])$(id).disabled=!ready||!loaded;
   $('compact-chapter').textContent=chapter.title;
   $('compact-time').textContent=`${time(t)} / ${time(duration)}`;
@@ -243,7 +266,7 @@ async function selectChapter(id, force = false) {
   chapter = data.chapters.find(c => c.id === id) || data.chapters[0];
   $('chapter').value = chapter.id; $('chapter-title').textContent = chapter.title;
   store = new SidecarStore(storage, data.bookId, chapter); $('notes').value = store.state.notes;
-  selected = null; composerOpen = false; $('composer').hidden = true; mark(null); lastFollow = -1; positionBlocked = false; positionError = '';
+  selected = null; closeComposer(); lastFollow = -1; positionBlocked = false; positionError = '';
   pendingPosition = 0;
   try { pendingPosition = readPosition(storage.getItem(positionKey(data.bookId, chapter)), chapter); }
   catch (error) { positionBlocked = true; positionError = error.message; }
@@ -290,7 +313,7 @@ audio.addEventListener('loadedmetadata', () => {
   if (!ready || audio.currentSrc !== new URL(chapter.audio, location.href).href) return;
   if (Math.abs(audio.duration - chapter.duration) > 1) { ready = false; $('integrity').textContent = 'Audio duration differs from the recorded receipt. Regenerate and verify the inputs.'; $('integrity').classList.add('error'); storageStatus(); return; }
   loaded = true; audio.currentTime = pendingPosition; audio.playbackRate = Number($('speed').value);
-  $('play').disabled = $('restart').disabled = $('seek').disabled = false; update(); status(pendingPosition ? 'Listening position restored. Press Play to continue.' : 'Ready to play.');
+  $('play').disabled = $('restart').disabled = $('seek').disabled = false; update(); status(pendingPosition ? 'Listening position restored. Press Resume to continue.' : 'Ready to play.');
 });
 audio.addEventListener('playing', () => {
   if (!ready || dictation.state !== 'idle') { audio.pause(); return; }
@@ -359,7 +382,7 @@ async function initialize() {
   try {const raw=storage.getItem(selectionKey);if(raw!==null){const saved=JSON.parse(raw);if(!data.chapters.some(c=>c.id===saved.chapterId))throw Error('Saved chapter missing');initial=saved.chapterId;}}
   catch {selectionBlocked=true;}
   await selectChapter(initial);
-  workspace=mountWorkspace({data,storage,browserStorage,context:()=>({chapter,store}),navigate:selectChapter,listen:listenAt,locate,update,pause:pauseForWriting,refresh:renderComments});
+  workspace=mountWorkspace({data,storage,browserStorage,context:()=>({chapter,store}),navigate:selectChapter,listen:listenAt,locate,update:()=>{markerLayoutDirty=true;update();},pause:pauseForWriting,refresh:renderComments});
   storageStatus();
 }
 void initialize().catch(error=>{databaseUnavailable=error.message;status(error.message);if(store)storageStatus();});

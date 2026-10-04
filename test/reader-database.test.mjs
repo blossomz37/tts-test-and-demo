@@ -6,7 +6,8 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { ReaderDatabase } from '../reader/database.mjs';
 import { SidecarStore, sidecarKey, positionKey } from '../reader/state.mjs';
-import { preferencesKey, reviewKey, validateBackup, identity, markdownBrief } from '../reader/book-records.mjs';
+import { preferencesKey, reviewKey, validateBackup, validatePreferences, identity, markdownBrief } from '../reader/book-records.mjs';
+import { readingPreferences } from '../reader/reading-state.mjs';
 import { anchor } from '../src/comments.mjs';
 import { createReaderServer } from '../reader/serve.mjs';
 import { hash } from '../reader/inputs.mjs';
@@ -20,6 +21,27 @@ function fullRecords(){
  records[preferencesKey(data.bookId)]=JSON.stringify({speed:1.5,follow:false,focus:true,fontSize:22,lineHeight:2.1,width:920,theme:'dark'});
  records[reviewKey(data.bookId,chapter)]=JSON.stringify({reviewed:true,bookmarks:[{id:'b',label:'Listen again',time:3}]});return records;
 }
+test('new reading defaults respect system theme only when there is no saved choice, and retain legacy settings',()=>{
+ const defaults=readingPreferences(null,true);assert.equal(defaults.theme,'dark');assert.equal(defaults.readingFont,'serif');assert.equal(defaults.fontSize,20);assert.equal(defaults.lineHeight,1.6);assert.equal(defaults.width,620);validatePreferences(defaults);
+ const legacy=JSON.parse(fullRecords()[preferencesKey(data.bookId)]);validatePreferences(legacy);
+ assert.deepEqual(readingPreferences(legacy),{...legacy,readingFont:'serif'});
+ assert.equal(readingPreferences({...legacy,theme:'light'},true).theme,'light');
+ for(const fontSize of [16,19,22,25])for(const lineHeight of [1.5,1.8,2.1])validatePreferences({...legacy,fontSize,lineHeight});
+ assert.throws(()=>validatePreferences({...defaults,readingFont:'decorative'}),/Invalid reading/);
+ assert.throws(()=>validatePreferences({...defaults,readingFont:null}),/Invalid reading/);
+});
+test('serif and sans preferences round trip through the existing portable backup schema',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'reader-appearance-'));let db,restored;
+ try{
+  db=new ReaderDatabase(root,data);const second=join(root,'restored');await mkdir(second);restored=new ReaderDatabase(second,data);
+  for(const readingFont of ['serif','sans']){
+   const prefs={...readingPreferences(null,true),readingFont},records={...fullRecords(),[preferencesKey(data.bookId)]:JSON.stringify(prefs)};
+   db.save(records,db.read().revision);const backup=db.backup();validateBackup(data,backup);assert.equal(backup.version,1);
+   restored.preview(backup);restored.save(backup.records,restored.read().revision,{restore:true});assert.deepEqual(restored.read().records,records);
+   assert.deepEqual(JSON.parse(restored.read().records[preferencesKey(data.bookId)]),prefs);
+  }
+ }finally{db?.close();restored?.close();await rm(root,{recursive:true,force:true});}
+});
 test('SQLite survives restart and portable backup recovers exact source, drafts, notes, progress and preferences',async()=>{
  const root=await mkdtemp(join(tmpdir(),'reader-db-'));let db,other;
  try{

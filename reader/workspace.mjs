@@ -1,7 +1,7 @@
 import { SidecarStore, sidecarKey } from './state.mjs';
 import { preferencesKey, selectedKey, reviewKey, identity, validateBackup, markdownBrief, summary } from './book-records.mjs';
+import { readingPreferences } from './reading-state.mjs';
 const $ = id => document.getElementById(id);
-const defaultPrefs = { speed: 1, follow: true, focus: false, fontSize: 19, lineHeight: 1.8, width: 760, theme: 'light' };
 export function downloadFile(value, name, type = 'application/json') {
   const text = type === 'application/json' ? JSON.stringify(value, null, 2) + '\n' : value;
   const url = URL.createObjectURL(new Blob([text], { type })), a = document.createElement('a');
@@ -12,16 +12,19 @@ export function mountWorkspace({ data, storage, browserStorage, context, navigat
   const records = () => Object.fromEntries(data.chapters.flatMap(c => [sidecarKey(data.bookId, c.id), reviewKey(data.bookId, c)]).concat(Object.keys(storage.records || {})).filter((v,i,a)=>a.indexOf(v)===i).map(k=>[k,storage.getItem(k)]).filter(([,v])=>v!==null));
   const run = action => async () => { try { await action(); } catch (e) { message(e.message); } };
   const flush = () => storage.flush?.() || Promise.resolve();
-  let prefs = { ...defaultPrefs, ...JSON.parse(storage.getItem(preferencesKey(data.bookId)) || '{}') }, restoreToken = null, restoreGeneration = -1, previewRequest = 0;
+  const loadPreferences = () => readingPreferences(JSON.parse(storage.getItem(preferencesKey(data.bookId)) || '{}'), globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches);
+  let prefs = loadPreferences(), restoreToken = null, restoreGeneration = -1, previewRequest = 0;
   const applyPrefs = () => {
     $('speed').value = prefs.speed; $('audio').playbackRate = prefs.speed; $('follow').checked = prefs.follow;
     document.body.classList.toggle('focus-view', prefs.focus); $('focus-toggle').setAttribute('aria-pressed', String(prefs.focus)); $('focus-toggle').textContent = prefs.focus ? 'Exit focus' : 'Focus view';
     document.documentElement.dataset.theme = prefs.theme;
-    for (const [id, key] of [['font-size','fontSize'],['line-height','lineHeight'],['reading-width','width'],['theme','theme']]) $(id).value = prefs[key];
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', prefs.theme === 'dark' ? '#181C1A' : '#F4F1EA');
+    document.documentElement.dataset.readingFont = prefs.readingFont;
+    for (const [id, key] of [['font-size','fontSize'],['line-height','lineHeight'],['reading-width','width'],['theme','theme'],['reading-font','readingFont']]) $(id).value = prefs[key];
     document.documentElement.style.setProperty('--reading-size', `${prefs.fontSize}px`); document.documentElement.style.setProperty('--reading-line', prefs.lineHeight); document.documentElement.style.setProperty('--reading-width', `${prefs.width}px`); update();
   };
   const savePrefs = () => { try { storage.setItem(preferencesKey(data.bookId), JSON.stringify(prefs)); applyPrefs(); } catch(e) { message(e.message); } };
-  for (const [id,key] of [['speed','speed'],['font-size','fontSize'],['line-height','lineHeight'],['reading-width','width'],['theme','theme']]) $(id).addEventListener('change',()=>{ prefs[key] = key==='theme' ? $(id).value : Number($(id).value); savePrefs(); });
+  for (const [id,key] of [['speed','speed'],['font-size','fontSize'],['line-height','lineHeight'],['reading-width','width'],['theme','theme'],['reading-font','readingFont']]) $(id).addEventListener('change',()=>{ prefs[key] = ['theme','readingFont'].includes(key) ? $(id).value : Number($(id).value); savePrefs(); });
   $('follow').addEventListener('change',()=>{ prefs.follow=$('follow').checked; savePrefs(); });
   $('focus-toggle').onclick=()=>{ prefs.focus=!prefs.focus; document.querySelector('.transport').classList.remove('options-open'); $('playback-options').setAttribute('aria-expanded','false'); savePrefs(); };
   $('playback-options').onclick=()=>{ const open=document.querySelector('.transport').classList.toggle('options-open'); $('playback-options').setAttribute('aria-expanded',String(open)); };
@@ -86,7 +89,7 @@ export function mountWorkspace({ data, storage, browserStorage, context, navigat
   $('restore-pick').onclick=()=>{clearPreview();$('restore-file').value='';$('restore-file').click();};
   $('restore-file').onchange=run(async()=>{clearPreview();const file=$('restore-file').files[0];if(!file)return;if(file.size>16*1024*1024)throw Error('Backup exceeds 16 MiB');await preview(JSON.parse(await file.text()),file.name);});
   $('restore-cancel').onclick=()=>{clearPreview();$('restore-pick').focus();};
-  $('restore-apply').onclick=run(async()=>{if(!restoreToken)return;if(storage.dirty||storage.flight||storage.generation!==restoreGeneration)throw Error('Reader data changed after preview. Preview the backup again.');const controls=[...document.querySelectorAll('button,input,textarea,select')].map(el=>[el,el.disabled]);controls.forEach(([el])=>el.disabled=true);storage.restoring=true;let result;try{result=await storage.request('restore',{token:restoreToken});storage.accept(result);}finally{storage.restoring=false;controls.forEach(([el,disabled])=>el.disabled=disabled);}restoreToken=null;$('restore-preview').hidden=true;prefs={...defaultPrefs,...JSON.parse(storage.getItem(preferencesKey(data.bookId))||'{}')};applyPrefs();await navigate(JSON.parse(storage.getItem(selectedKey(data.bookId))||'null')?.chapterId || context().chapter.id,true);renderChapter();renderBook();message('Backup restored. The previous database snapshot was retained.');});
+  $('restore-apply').onclick=run(async()=>{if(!restoreToken)return;if(storage.dirty||storage.flight||storage.generation!==restoreGeneration)throw Error('Reader data changed after preview. Preview the backup again.');const controls=[...document.querySelectorAll('button,input,textarea,select')].map(el=>[el,el.disabled]);controls.forEach(([el])=>el.disabled=true);storage.restoring=true;let result;try{result=await storage.request('restore',{token:restoreToken});storage.accept(result);}finally{storage.restoring=false;controls.forEach(([el,disabled])=>el.disabled=disabled);}restoreToken=null;$('restore-preview').hidden=true;prefs=loadPreferences();applyPrefs();await navigate(JSON.parse(storage.getItem(selectedKey(data.bookId))||'null')?.chapterId || context().chapter.id,true);renderChapter();renderBook();message('Backup restored. The previous database snapshot was retained.');});
   $('retry-save').onclick=run(async()=>{await flush();message('Pending edits saved to the database.');});
   const legacy=browserRecords();
   $('migrate-browser').hidden=!storage.request||!Object.values(legacy).length;
@@ -97,6 +100,6 @@ export function mountWorkspace({ data, storage, browserStorage, context, navigat
   $('recover-pending').onclick=run(()=>preview(makeBackup(pending.records)));
   const recoveryButtons=()=>{$('retry-save').hidden=!storage.error||storage.blocked;$('keep-database').hidden=!storage.blocked;};
   window.addEventListener('reader-storage',recoveryButtons);recoveryButtons();
-  $('keep-database').onclick=run(async()=>{const raw=storage.pendingRecovery||browserStorage.getItem(storage.recoveryKey);if(raw)browserStorage.setItem(storage.recoveryKey+':retained:'+crypto.randomUUID(),raw);const response=await fetch('./api/session',{cache:'no-store'});if(!response.ok)throw Error('Database is unavailable');storage.accept(await response.json());storage.pendingRecovery=null;prefs={...defaultPrefs,...JSON.parse(storage.getItem(preferencesKey(data.bookId))||'{}')};applyPrefs();await navigate(context().chapter.id,true);renderChapter();renderBook();message('Saved database version loaded. The earlier browser recovery copy was retained.');});
+  $('keep-database').onclick=run(async()=>{const raw=storage.pendingRecovery||browserStorage.getItem(storage.recoveryKey);if(raw)browserStorage.setItem(storage.recoveryKey+':retained:'+crypto.randomUUID(),raw);const response=await fetch('./api/session',{cache:'no-store'});if(!response.ok)throw Error('Database is unavailable');storage.accept(await response.json());storage.pendingRecovery=null;prefs=loadPreferences();applyPrefs();await navigate(context().chapter.id,true);renderChapter();renderBook();message('Saved database version loaded. The earlier browser recovery copy was retained.');});
   applyPrefs();renderChapter();renderBook();return {renderChapter,renderBook,showNotes(){prefs.focus=false;savePrefs();}};
 }
