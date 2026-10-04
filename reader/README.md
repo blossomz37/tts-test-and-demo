@@ -142,7 +142,7 @@ The generated launcher bundles its own application modules.
 The page retains an emergency browser copy while commits are pending. The save
 status distinguishes pending work from confirmed database saves. An interrupted
 save exposes **Recover pending edits**; it is never silently replayed. Old browser
-keys remain intact and can be imported explicitly through **Book tools → Backups &
+keys remain intact and can be imported explicitly through **Search & book tools → Backups &
 exports → Import browser notes**. Imported records must match the book, exact
 source and recording. Conflicts are blocked rather than automatically merged.
 A failed saved-comment mutation restores its earlier UI state and asks for recovery;
@@ -154,7 +154,7 @@ snapshots remain under `notes/backups/`; no automatic deletion is performed.
 Regeneration preserves the entire notes directory. Copy a completed snapshot for
 an independent database backup; do not copy an active SQLite file without its WAL.
 
-**Back up whole book** exports a portable version-1 JSON backup with all notes,
+**Back up reader data** exports a portable version-1 JSON backup with all notes,
 saved comments, unfinished drafts, bookmarks, review progress, reading preferences
 and positions. The original audio is referenced by hash and is not embedded.
 **Restore backup** validates every identity and anchor, previews current/incoming
@@ -179,7 +179,7 @@ before saving an edit uses the original saved body. Manuscripts are never edited
 
 The player provides previous/next chapter, ten-second skips, selection-based
 **Listen from here**, speed-adjusted remaining time and remembered speed/Follow.
-**Focus view** hides the notes rail. **Book tools** contains text size, line spacing,
+**Focus view** hides the notes rail. **Search & book tools** contains text size, line spacing,
 reading width, appearance, book-wide text/comment search and review filters.
 Comments have optional categories and open/resolved state. Click an underlined
 word to reveal its comment; each comment offers Show passage and Listen.
@@ -220,3 +220,17 @@ text preservation, comments, reload recovery, exports and narrow layouts.
 Recognition events are controlled; the test never captures ambient audio.
 Downloads/screenshots go to ignored `output/playwright/`. Real microphone accuracy
 and full human listening review must be reported separately.
+
+The restore preview identifies the chosen backup and its creation date, compares
+current and backup counts, and emphasizes changed counts (including drafts).
+Matching counts do not imply identical content. Cancel closes and clears the
+preview; selecting another file invalidates the prior preview.
+
+Comment editors report draft persistence separately from **Save comment**, which
+updates the saved comment and revision exports. Search results for comments retain
+a short excerpt of the anchored passage. Backup/export descriptions explain which
+files support recovery; the database path is under Storage details.
+
+On narrow screens, chapter navigation stays paired and a compact player appears
+when the main player scrolls out of view. It hides during text entry and uses the
+same audio element and playback controls. Focus view reduces header overhead; phone Focus keeps chapter, speed and Follow settings under Playback options.

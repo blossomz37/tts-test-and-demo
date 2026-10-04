@@ -26,9 +26,14 @@ function download(payload, name) {
 }
 function storageStatus() {
   const error = databaseUnavailable || storage.error || store?.error || positionError;
-  $('storage-status').textContent = error || (storage.records ? (storage.dirty ? 'Saving to local database…' : 'Saved to local database.') : 'Notes and drafts saved in this browser.');
+  $('storage-status').textContent = error || (storage.records ? (storage.dirty ? 'Saving reader data to local database…' : 'Reader data saved to local database.') : 'Reader notes and drafts saved in this browser.');
   $('storage-status').classList.toggle('error', !!error);
   $('recovery').hidden = !error;
+  if (store?.state.draft) {
+    const draftSave=error?'Draft save not confirmed.':storage.dirty || store.dirty?'Saving draft…':storage.records?'Draft saved locally.':'Draft saved in this browser.';
+    $('draft-status').textContent=`${draftSave} ${store.state.draft.commentId?'The saved comment is unchanged. Save comment to update it.':'Save comment to add it to your saved comments and revision exports.'}`;
+    $('draft-status').classList.toggle('error',!!error);
+  } else $('draft-status').textContent='';
   const blocked = !ready || store?.blocked || storage.blocked || !!databaseUnavailable || mutationBusy;
   for (const id of ['notes', 'comment-body', 'dictate-notes', 'dictate-comment', 'discard', 'comment-category']) $(id).disabled = blocked;
   if (dictation.state === 'stopping') $('dictate-notes').disabled = $('dictate-comment').disabled = true;
@@ -190,6 +195,11 @@ function update() {
   }
   $('play').textContent = audio.paused ? 'Play' : 'Pause';
   $('play').setAttribute('aria-label', audio.paused ? 'Play narration' : 'Pause narration');
+  $('compact-play').textContent=audio.paused?'Play':'Pause';
+  $('compact-play').setAttribute('aria-label', `${audio.paused?'Play':'Pause'} narration — compact player`);
+  for(const id of ['compact-play','compact-rewind','compact-forward'])$(id).disabled=!ready||!loaded;
+  $('compact-chapter').textContent=chapter.title;
+  $('compact-time').textContent=`${time(t)} / ${time(duration)}`;
 }
 function frame() { update(); if (!audio.paused && !audio.ended) raf = requestAnimationFrame(frame); }
 function savePosition() {
@@ -262,6 +272,16 @@ $('play').onclick = async () => {
   if (audio.ended) audio.currentTime = 0;
   try { await audio.play(); } catch (error) { if (token === epoch) status(`Playback could not start: ${error.message}`); }
 };
+$('compact-play').onclick=()=>$('play').click();
+for(const [id,delta] of [['compact-rewind',-10],['compact-forward',10]])$(id).onclick=()=>void listenAt(Math.max(0,Math.min(chapter.duration,audio.currentTime+delta)),false).catch(error=>status(error.message));
+function compactVisibility() {
+  const typing=document.activeElement?.matches('textarea,input:not([type=range]):not([type=checkbox]),select');
+  $('compact-player').hidden=!matchMedia('(max-width:760px)').matches || document.querySelector('.transport').getBoundingClientRect().bottom>0 || typing || !$('restore-preview').hidden;
+}
+window.addEventListener('scroll',compactVisibility,{passive:true});
+window.addEventListener('resize',compactVisibility);
+document.addEventListener('focusin',compactVisibility);
+document.addEventListener('focusout',()=>queueMicrotask(compactVisibility));
 $('restart').onclick = () => { audio.currentTime = 0; lastFollow = -1; update(); savePosition(); };
 $('seek').oninput = () => { audio.currentTime = Number($('seek').value); lastFollow = -1; update(); };
 $('speed').onchange = () => { audio.playbackRate = Number($('speed').value); update(); };

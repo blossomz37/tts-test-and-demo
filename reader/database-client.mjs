@@ -8,7 +8,7 @@ export class DatabaseStorage {
     this.pendingRecovery = browser.getItem(this.recoveryKey);
     this.dirty = false; this.blocked = false; this.error = ''; this.generation = 0;
     if (this.pendingRecovery) {
-      try { const pending=JSON.parse(this.pendingRecovery); if(!pending.acknowledged && JSON.stringify(pending.records)!==JSON.stringify(this.records)) { this.blocked=true; this.error='Pending browser edits need review. Open Book tools → Backups & exports to recover them.'; } }
+      try { const pending=JSON.parse(this.pendingRecovery); if(!pending.acknowledged && JSON.stringify(pending.records)!==JSON.stringify(this.records)) { this.blocked=true; this.error='Pending browser edits need review. Open Search & book tools → Backups & exports to recover them.'; } }
       catch { this.blocked=true; this.error='Unreadable browser recovery data was preserved. Export recovery before proceeding.'; }
     }
   }
