@@ -70,6 +70,14 @@ button, select {
   min-height: 44px; border: 1px solid var(--boundary); border-radius: 6px;
   background: var(--paper); color: var(--ink); padding: 9px 13px;
 }
+select {
+  appearance: none;
+  padding-right: 34px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: right 17px center, right 12px center;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+}
 button { cursor: pointer; font-weight: 600; font-size: 15px; transition: background-color 140ms ease; }
 button:hover:not(:disabled), button[aria-pressed=true] { background: var(--hover); }
 button.primary { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
@@ -87,6 +95,7 @@ input[type=checkbox] { accent-color: var(--primary); width: 22px; height: 22px; 
 .transport-row { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; }
 .transport-row label:not(.follow) { display: grid; gap: 5px; font-size: 13px; color: var(--muted); }
 .transport button, .transport select { padding: 8px 10px; }
+.transport select { padding-right: 34px; }
 .chapter-navigation, .playback-actions, .playback-settings { display: flex; align-items: end; gap: 8px; min-width: 0; }
 .chapter-control { min-width: 130px; flex: 1; }
 .playback-actions { flex-shrink: 0; }
@@ -209,6 +218,7 @@ body.focus-view .reading-heading .actions:has(#listen-selection:disabled):has(#c
   .transport { position: static; padding: 12px; }
   .transport-row { gap: 10px; }
   .transport button, .transport select { padding: 8px; }
+  .transport select { padding-right: 34px; }
   .chapter-navigation { flex-basis: 100%; }
   .chapter-control { min-width: 0; }
   .chapter-control select { width: 100%; min-width: 0; }
@@ -253,4 +263,7 @@ body.focus-view .reading-heading .actions:has(#listen-selection:disabled):has(#c
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+}
+@media (forced-colors: active) {
+  select, .transport select { appearance: auto; background-image: none; padding-right: 10px; }
 }
