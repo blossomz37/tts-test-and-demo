@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file:; style-src 'self' file:; font-src 'self' file:; media-src 'self' file: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'">
+  <title>Local chapter reader</title><link rel="stylesheet" href="style.css">
+  <script defer src="data.js"></script><script defer src="app.js"></script>
+</head>
+<body>
+  <header><span class="masthead">ELECTRIC CREATIVE</span><span class="local">LOCAL CHAPTER READER</span></header>
+  <main>
+    <div class="book-heading"><div><p class="eyebrow">READ · LISTEN · ANNOTATE</p><h1 id="book-title">Chapter reader</h1></div><button id="export">Export chapter notes</button></div>
+    <section class="transport" aria-label="Playback controls">
+      <div class="transport-row"><label class="chapter-control">Chapter<select id="chapter"></select></label><button id="play" class="primary" disabled>Play</button><button id="restart" disabled>Start over</button><label>Speed<select id="speed"><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label><label class="follow"><input id="follow" type="checkbox" checked>Follow audio</label></div>
+      <div class="timeline"><span id="elapsed">0:00</span><input id="seek" type="range" min="0" max="1" value="0" step="0.05" aria-label="Listening position" disabled><span id="duration">0:00</span></div>
+      <p id="play-status" role="status">Preparing reader…</p>
+    </section>
+    <p id="integrity" class="notice" role="status"></p>
+    <div class="workspace">
+      <section class="reading" aria-label="Chapter text"><div class="reading-heading"><h2 id="chapter-title">Chapter</h2><button id="comment-selection" disabled>Comment on selection</button></div><div id="passage" tabindex="0"></div></section>
+      <aside aria-label="Notes and comments">
+        <section class="notes-panel"><h2>Chapter notes</h2><label class="sr-only" for="notes">General notes</label><textarea id="notes" rows="7" placeholder="What stands out in this chapter?"></textarea><button id="dictate-notes">Dictate notes</button><p id="notes-interim" class="interim" aria-live="polite"></p><p id="dictation-status" role="status"></p><p class="hint">Dictation uses Chrome’s on-device English recognition. It may need a language pack and microphone permission. Typing is always available.</p></section>
+        <p id="storage-status" role="status"></p><button id="recovery" hidden>Export recovery data</button>
+        <button id="resume-draft" hidden>Resume draft</button>
+        <section id="composer" class="notes-panel" hidden><h2 id="composer-title">Comment on selection</h2><blockquote id="quote"></blockquote><label class="sr-only" for="comment-body">Comment draft</label><textarea id="comment-body" rows="6"></textarea><p id="comment-interim" class="interim" aria-live="polite"></p><div class="actions"><button id="dictate-comment">Dictate comment</button><button id="save-comment" class="primary">Save comment</button><button id="back">Back · keep draft</button><button id="discard">Discard draft</button></div></section>
+        <section><h2>Saved comments <span id="comment-count"></span></h2><p id="empty-comments" class="hint">Select a passage to attach a comment.</p><div id="comments"></div></section>
+      </aside>
+    </div>
+    <details class="help"><summary>About timing, privacy & recovery</summary><p>Word timings are approximate machine alignments of the existing recording to its narration text. They do not prove every word was narrated correctly. Collapsed short words share the next timed word’s highlight.</p><p>Text is an immutable source snapshot. Comments use its exact SHA-256 and UTF-16 [start,end) offsets. Notes never change the manuscript. Saved comments and current chapter notes are included in JSON exports; unfinished drafts and interim speech are excluded.</p><p>Notes, drafts and listening positions stay in this browser profile and origin. Use the same local launcher address each time. Export important work before clearing browser data. There is no automatic multi-tab merge: if another tab changes notes, export recovery data and reload. Source-mismatched or unreadable records are preserved and blocked from replacement.</p><p>Direct-file mode supports reading and playback where allowed by your browser. The local server adds live input identity checks, reliable seeking, a stable origin and the secure local context needed for dictation. Nothing is uploaded.</p></details>
+  </main>
+  <audio id="audio" preload="metadata"></audio>
+</body>
+</html>

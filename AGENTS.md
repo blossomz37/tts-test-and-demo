@@ -2,7 +2,7 @@
 
 ## Scope and commands
 
-Two independent demos: the main browser TTS/STT/comment app at the root, and the recorded model comparison in `research/`. Keep them separate unless integration is requested. Use Node >=22.
+Two independent demos: the main browser TTS/STT/comment app at the root, and the recorded model comparison in `research/`. A separate reusable recorded-chapter reader lives in `reader/`; see `reader/README.md` for its generator and persistence contracts. Keep their entry points separate. Use Node >=22.
 
 ```sh
 npm ci
@@ -57,3 +57,5 @@ Run npm test and npm run build after relevant app changes. Check real browser pl
 `research/` is the current shareable research source. Its bundled public request/billing/timing records support visible claims and playback; they are intentional example data. See research/AGENTS.md for its format and verification. Raw provider logs, account/workspace identifiers, original experiments, local environment files, screenshots, browser profiles, generated assets, and release packages are not contributor inputs and stay ignored.
 
 Do not force-add ignored files to make a build/test pass. Verify a checkout containing only Git-visible files. Keep archived/local material local; do not restore it into the publish set without review.
+
+The chapter-reader generator writes only beside the supplied audio run, outside this repository. Never commit generated data, source manuscripts, alignments or notes. Reuse `src/comments.mjs` and `src/dictation.mjs` as pure shared contracts; the new UI owns chapter lifecycle and storage. Export schema 3 adds book/chapter/audio identity to schema 2. Never substitute normalized narration offsets for exact source offsets. A dedicated stable loopback origin avoids the main demo's root service worker; restart the generated launcher after regeneration. Browser checks must use controlled dictation events unless microphone testing is explicitly requested.

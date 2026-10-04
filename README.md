@@ -2,7 +2,7 @@
 
 A small, local web demo for listening to prose, dictating notes, and attaching comments to selected text. The main app uses **Kokoro WebGPU with the Heart voice**. A separate [model-research page](research/README.md) compares eight recorded OpenRouter samples with word highlighting and measured costs.
 
-**On this page:** [Run the demo](#run-the-main-demo) · [Interactions](#try-the-interactions) · [Model research](#open-the-model-research) · [Development](#development)
+**On this page:** [Run the demo](#run-the-main-demo) · [Interactions](#try-the-interactions) · [Chapter reader](#read-existing-chapter-recordings) · [Model research](#open-the-model-research) · [Development](#development)
 
 ## Run the main demo
 
@@ -70,9 +70,17 @@ Open the address printed in the terminal. This server chooses a free loopback po
 
 The [research README](research/README.md) explains the comparison and controls. Historical prices and response times are observations from one round, not current price promises or a performance benchmark.
 
+## Read existing chapter recordings
+
+The separate [local chapter reader](reader/README.md) generates a private reader
+beside an existing narration run, with remembered playback, approximate word
+highlighting, chapter notes, selection comments and on-device dictation. It links
+existing MP3s and keeps book text, alignments and notes outside this repository.
+Its guide covers generation, startup, alignment, persistence, recovery and exports.
+
 ## Development
 
-`npm test` runs 30 deterministic reader, dictation, and comment tests using public synthetic fixtures. `npm run build` bundles the worker/runtime and updates the offline shell identity. `python3 research/tools/verify.py` checks research audio/request hashes, metadata, and timing coverage without network access.
+`npm test` runs deterministic reader, dictation, comment and chapter-reader tests using public synthetic fixtures. `npm run build` bundles the worker/runtime and updates the offline shell identity. `python3 research/tools/verify.py` checks research audio/request hashes, metadata, and timing coverage without network access.
 
 See [AGENTS.md](AGENTS.md) for implementation contracts and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for bundled fonts and downloaded components.
 
