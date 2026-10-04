@@ -1,3 +1,5 @@
+import { DatabaseStorage } from './database-client.mjs';
+import { mountWorkspace } from './workspace.mjs';
 import { anchor, snapToWords, relativeTime } from '../src/comments.mjs';
 import { Dictation, appendTranscript } from '../src/dictation.mjs';
 import { SidecarStore, positionKey, readPosition } from './state.mjs';
@@ -9,10 +11,13 @@ const time = seconds => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds
 const status = message => { $('play-status').textContent = message; };
 const selectionKey = `chapter-reader:v1:${encodeURIComponent(data.bookId)}:selected`;
 let selectionBlocked = false;
-let storage;
+let storage, browserStorage, workspace, databaseUnavailable = '', mutationBusy = false;
+let cueEvents = [], eventCursor = 0, previousTime = -1, activeSpans = new Set();
 try { storage = window.localStorage; } catch {
   storage = { getItem() { throw Error('Browser storage is unavailable'); }, setItem() { throw Error('Browser storage is unavailable'); } };
 }
+
+browserStorage = storage;
 
 function download(payload, name) {
   const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2) + '\n'], { type: 'application/json' }));
@@ -20,15 +25,19 @@ function download(payload, name) {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 function storageStatus() {
-  const error = store?.error || positionError;
-  $('storage-status').textContent = error || 'Notes and drafts saved in this browser.';
+  const error = databaseUnavailable || storage.error || store?.error || positionError;
+  $('storage-status').textContent = error || (storage.records ? (storage.dirty ? 'Saving to local database…' : 'Saved to local database.') : 'Notes and drafts saved in this browser.');
   $('storage-status').classList.toggle('error', !!error);
   $('recovery').hidden = !error;
-  const blocked = !ready || store?.blocked;
-  for (const id of ['notes', 'comment-body', 'dictate-notes', 'dictate-comment', 'discard']) $(id).disabled = blocked;
+  const blocked = !ready || store?.blocked || storage.blocked || !!databaseUnavailable || mutationBusy;
+  for (const id of ['notes', 'comment-body', 'dictate-notes', 'dictate-comment', 'discard', 'comment-category']) $(id).disabled = blocked;
   if (dictation.state === 'stopping') $('dictate-notes').disabled = $('dictate-comment').disabled = true;
   $('save-comment').disabled = blocked || dictation.state !== 'idle';
   $('comment-selection').disabled = blocked || !selected;
+  $('listen-selection').disabled = !ready || !selected;
+  $('chapter').disabled = mutationBusy;
+  for (const id of ['rewind','forward','bookmark','chapter-reviewed']) $(id).disabled = !ready || !!databaseUnavailable || mutationBusy;
+  if (error) { $('action-status').textContent = error + ' Export recovery data before leaving.'; $('recovery').hidden = false; }
 }
 function rangeFor(target) {
   const walker = document.createTreeWalker($('passage'), NodeFilter.SHOW_TEXT), range = document.createRange();
@@ -54,42 +63,63 @@ function showComposer() {
   const draft = store.state.draft; if (!draft) return;
   composerOpen = true; $('composer').hidden = false; $('resume-draft').hidden = true;
   $('composer-title').textContent = draft.commentId ? 'Edit comment' : 'Comment on selection';
+  $('comment-category').value = draft.category || '';
   $('quote').textContent = draft.anchor.quote; $('comment-body').value = draft.body;
   mark(draft.anchor); $('comment-body').focus(); storageStatus();
 }
-function renderComments() {
+function renderComments(selectedId) {
   const comments = store.state.comments;
   $('comment-count').textContent = comments.length ? `(${comments.length})` : '';
   $('empty-comments').hidden = comments.length > 0;
   if (globalThis.CSS?.highlights) CSS.highlights.set('saved-comments', new Highlight(...comments.map(c => rangeFor(c.anchor))));
   $('comments').replaceChildren(...comments.map(c => {
-    const card = document.createElement('article'); card.className = 'comment-card'; card.dataset.id = c.id;
+    const card = document.createElement('article'); card.className = `comment-card${c.resolved ? ' resolved' : ''}${c.id === selectedId ? ' selected' : ''}`; card.dataset.id = c.id;
     const quote = document.createElement('blockquote'); quote.textContent = c.anchor.quote;
     const body = document.createElement('p'); body.textContent = c.body;
     const when = document.createElement('time'); when.dateTime = c.updatedAt || c.createdAt; when.textContent = `${c.updatedAt ? 'Edited ' : ''}${relativeTime(when.dateTime)}`;
+    const meta = document.createElement('div'); meta.className = 'comment-meta'; meta.textContent = `${c.category || 'Uncategorized'} · ${c.resolved ? 'resolved' : 'open'}`;
     const actions = document.createElement('div'); actions.className = 'actions';
     for (const [label, action] of [
       ['Show passage', () => locate(c.anchor)],
+      ['Listen', () => void listenFrom(c.anchor)],
+      [c.resolved ? 'Reopen' : 'Resolve', () => void mutateSaved(() => store.write({ ...store.state, comments: store.state.comments.map(x => x.id === c.id ? { ...x, resolved: !x.resolved, updatedAt: new Date().toISOString() } : x) } ))],
       ['Edit', () => {
         pauseForWriting();
         if (store.state.draft && store.state.draft.commentId !== c.id) { showComposer(); status('Finish or discard the open draft first.'); return; }
-        if (!store.state.draft) store.draft({ commentId: c.id, anchor: c.anchor, body: c.body });
+        if (!store.state.draft) store.draft({ commentId: c.id, anchor: c.anchor, body: c.body, category: c.category || '' });
         showComposer();
       }],
-      ['Delete', () => {
+      ['Delete', async () => {
         if (!confirm('Delete this saved comment and any draft of its edits?')) return;
         dictation.cancel();
-        if (store.deleteComment(c.id)) { if (!store.state.draft) closeComposer(); renderComments(); }
+        await mutateSaved(() => store.deleteComment(c.id));
         storageStatus();
       }]
     ]) {
       const button = document.createElement('button'); button.textContent = label; button.disabled = label !== 'Show passage' && (store.blocked || !ready); button.onclick = action; actions.append(button);
     }
-    card.append(quote, body, when, actions); return card;
+    card.append(meta, quote, body, when, actions); return card;
   }));
   $('resume-draft').hidden = !store.state.draft || composerOpen;
+  if (selectedId) $('comments').querySelector('.selected')?.scrollIntoView({block:'nearest'});
+  workspace?.renderBook();
 }
 function closeComposer() { composerOpen = false; $('composer').hidden = true; $('resume-draft').hidden = !store.state.draft; mark(null); }
+async function mutateSaved(action) {
+  if (mutationBusy || storage.blocked) return;
+  pauseForWriting(); mutationBusy = true; storageStatus();
+  const previous = structuredClone(store.state), originalRecords = storage.records && { ...storage.records };
+  try {
+    await storage.flush?.();
+    if (!action()) throw Error(store.error || 'Change could not be saved');
+    await storage.flush?.();
+    if (!store.state.draft) closeComposer();
+  } catch (error) {
+    store.state = previous;
+    if (originalRecords && storage.error) { storage.records = originalRecords; storage.blocked = true; store.blocked = true; }
+    store.error = error.message + ' Saved comment change was not confirmed; export recovery and reload.';
+  } finally { mutationBusy = false; renderComments(); storageStatus(); }
+}
 function pauseForWriting() { epoch++; audio.pause(); savePosition(); dictation.cancel(); }
 
 const dictation = new Dictation({ Recognition: window.SpeechRecognition || window.webkitSpeechRecognition,
@@ -137,16 +167,22 @@ function renderPassage() {
   }
   fragment.append(document.createTextNode(chapter.source.text.slice(cursor))); $('passage').replaceChildren(fragment);
   if ($('passage').textContent !== chapter.source.text) throw Error('Text preservation check failed');
+  cueEvents = spans.flatMap((item,i) => [{time:item.cue.start, i, enter:true}, {time:item.cue.displayEnd, i, enter:false}]).sort((a,b)=>a.time-b.time || Number(a.enter)-Number(b.enter));
+  eventCursor=0; previousTime=-1; activeSpans=new Set();
 }
 function update() {
+  if (!chapter) return;
   const t = loaded ? audio.currentTime || 0 : pendingPosition, duration = chapter.duration;
   $('seek').max = duration; $('seek').value = t; $('elapsed').textContent = time(t); $('duration').textContent = time(duration);
   $('seek').setAttribute('aria-valuetext', `${time(t)} of ${time(duration)}`);
-  let activeIndex = -1;
-  spans.forEach(({ span, cue }, i) => {
-    const active = ready && !audio.ended && t >= cue.start && t < cue.displayEnd;
-    span.classList.toggle('current', active); if (active) activeIndex = i;
-  });
+  $('remaining').textContent = `${time(Math.max(0, duration - t) / Number($('speed').value))} remaining`;
+  if (t < previousTime || !ready || audio.ended) { for (const i of activeSpans) spans[i]?.span.classList.remove('current'); activeSpans.clear(); eventCursor=0; }
+  if (ready && !audio.ended) while(eventCursor < cueEvents.length && cueEvents[eventCursor].time <= t) {
+    const event=cueEvents[eventCursor++];
+    if(event.enter) activeSpans.add(event.i); else activeSpans.delete(event.i);
+    spans[event.i].span.classList.toggle('current',event.enter);
+  }
+  previousTime=t; const activeIndex=activeSpans.size ? Math.max(...activeSpans) : -1;
   if ($('follow').checked && activeIndex >= 0 && activeIndex !== lastFollow && getSelection().isCollapsed) {
     lastFollow = activeIndex;
     const el = spans[activeIndex].span, rect = el.getBoundingClientRect(), top = document.querySelector('.transport').getBoundingClientRect().bottom;
@@ -157,7 +193,7 @@ function update() {
 }
 function frame() { update(); if (!audio.paused && !audio.ended) raf = requestAnimationFrame(frame); }
 function savePosition() {
-  if (!chapter || !loaded || positionBlocked) return;
+  if (!chapter || !loaded || positionBlocked || storage.restoring) return;
   try {
     storage.setItem(positionKey(data.bookId, chapter), JSON.stringify({ sourceSha256: chapter.source.sha256, audioSha256: chapter.audioSha256, time: audio.currentTime }));
   } catch { positionError = 'Listening position could not be saved. Notes have their own storage status.'; storageStatus(); }
@@ -175,9 +211,24 @@ async function verify(ch, token) {
   if (!response.ok || !result.ok || result.sourceSha256 !== ch.source.sha256 || result.audioSha256 !== ch.audioSha256 || result.narrationSha256 !== ch.narrationSha256 || result.alignmentSha256 !== ch.alignmentSha256) throw Error(result.error || 'Inputs differ from this reader. Regenerate before playing or annotating.');
   return 'Source and audio hashes verified · approximate word timing' + (ch.alignmentWarnings?.length ? ` · Alignment warning: ${ch.alignmentWarnings.join('; ')}` : '');
 }
-async function selectChapter(id) {
-  if (store?.dirty && !store.write()) { $('chapter').value = chapter.id; storageStatus(); return; }
-  savePosition(); loaded = false; ready = false; epoch++; const token = epoch;
+async function listenAt(t, play = true) {
+  if (!ready) return;
+  if (!loaded) await new Promise((resolve, reject) => {
+    const timer=setTimeout(()=>{audio.removeEventListener('loadedmetadata',done);reject(Error('Recording is still loading. Try again.'));},10000);
+    const done=()=>{clearTimeout(timer);resolve();};audio.addEventListener('loadedmetadata',done,{once:true});
+  });
+  audio.currentTime=t; lastFollow=-1; update(); savePosition();
+  if(play) {dictation.cancel(); await audio.play();}
+}
+async function listenFrom(target) {
+  const cue=chapter.cues.find(c=>c.to>target.start); if(cue) {try{await listenAt(cue.start);}catch(error){status(error.message);}}
+}
+async function selectChapter(id, force = false) {
+  if (mutationBusy) return false;
+  if (chapter?.id === id && !force) return ready;
+  try { await storage.flush?.(); } catch(error) { status(error.message); $('chapter').value=chapter?.id || id; return false; }
+  if (store?.dirty && !store.write()) { $('chapter').value = chapter.id; storageStatus(); return false; }
+  if (!force) savePosition(); loaded = false; ready = false; epoch++; const token = epoch;
   audio.pause(); audio.removeAttribute('src'); audio.load(); cancelAnimationFrame(raf); dictation.cancel();
   chapter = data.chapters.find(c => c.id === id) || data.chapters[0];
   $('chapter').value = chapter.id; $('chapter-title').textContent = chapter.title;
@@ -187,17 +238,17 @@ async function selectChapter(id) {
   try { pendingPosition = readPosition(storage.getItem(positionKey(data.bookId, chapter)), chapter); }
   catch (error) { positionBlocked = true; positionError = error.message; }
   if (!selectionBlocked) try { storage.setItem(selectionKey, JSON.stringify({ chapterId: chapter.id })); } catch { selectionBlocked = true; positionError ||= 'Selected chapter could not be saved.'; }
-  renderPassage(); renderComments(); update(); storageStatus();
+  renderPassage(); renderComments(); update(); storageStatus(); workspace?.renderChapter();
   $('play').disabled = $('restart').disabled = $('seek').disabled = true;
   status('Checking chapter…'); $('integrity').textContent = ''; $('integrity').classList.remove('error');
   try {
     const message = await verify(chapter, token); if (token !== epoch) return;
     ready = true; $('integrity').textContent = message;
     audio.src = chapter.audio; audio.load(); audio.playbackRate = Number($('speed').value);
-    renderComments(); storageStatus(); status('Loading recording…');
+    renderComments(); storageStatus(); status('Loading recording…'); return true;
   } catch (error) {
     if (token !== epoch) return;
-    $('integrity').textContent = error.message; $('integrity').classList.add('error'); status('Playback and annotation paused until inputs are verified. Existing notes can be exported.');
+    $('integrity').textContent = error.message; $('integrity').classList.add('error'); $('integrity').closest('details').open = true; status('Playback and annotation paused until inputs are verified. Existing notes can be exported.');
   }
 }
 
@@ -242,6 +293,15 @@ document.addEventListener('selectionchange', () => {
   }
   if (store) storageStatus();
 });
+$('listen-selection').onpointerdown = event => event.preventDefault();
+$('listen-selection').onclick = () => selected && void listenFrom(selected);
+$('comment-category').onchange = () => { if(store.state.draft) store.draft({...store.state.draft,category:$('comment-category').value}); storageStatus(); };
+$('passage').onclick = event => {
+  if(!getSelection().isCollapsed)return;
+  const word=event.target.closest('.word');if(!word)return;const offset=Number(word.dataset.from);
+  const comment=store.state.comments.find(c=>offset<c.anchor.end && offset>=c.anchor.start);
+  if(comment){workspace?.showNotes();locate(comment.anchor);renderComments(comment.id);}
+};
 $('comment-selection').onpointerdown = event => event.preventDefault();
 $('comment-selection').onclick = () => {
   if (!selected || store.blocked || !ready) return;
@@ -251,28 +311,35 @@ $('comment-selection').onclick = () => {
 $('notes').oninput = () => { store.notes($('notes').value); storageStatus(); };
 $('comment-body').oninput = () => { if (store.state.draft) store.draft({ ...store.state.draft, body: $('comment-body').value }); storageStatus(); };
 $('dictate-notes').onclick = () => dictate('notes'); $('dictate-comment').onclick = () => dictate('comment');
-$('save-comment').onclick = () => {
-  if (dictation.state !== 'idle') return;
-  try { if (store.saveComment()) { closeComposer(); renderComments(); } storageStatus(); }
-  catch (error) { $('storage-status').textContent = error.message; }
-};
+$('save-comment').onclick = () => { if(dictation.state==='idle') void mutateSaved(()=>store.saveComment()); };
 $('back').onclick = () => { dictation.cancel(); closeComposer(); renderComments(); };
 $('resume-draft').onclick = () => { pauseForWriting(); showComposer(); };
-$('discard').onclick = () => {
+$('discard').onclick = async () => {
   if (!confirm('Discard this unfinished draft? The saved comment, if any, will be kept.')) return;
-  dictation.cancel(); if (store.write({ ...store.state, draft: null })) { closeComposer(); renderComments(); } storageStatus();
+  dictation.cancel(); await mutateSaved(()=>store.write({ ...store.state, draft: null }));
 };
-$('export').onclick = () => download(store.export(), `${data.bookId}-${chapter.id}.comments.json`);
-$('recovery').onclick = () => download(store.recovery(), `${data.bookId}-${chapter.id}.recovery.json`);
+$('export').onclick = async () => { try { await storage.flush?.(); download(store.export(), `${data.bookId}-${chapter.id}.comments.json`); } catch(e) { status(e.message); } };
+$('recovery').onclick = () => download({chapter:store.recovery(),database:storage.records?{revision:storage.revision,records:storage.records,pendingRecovery:storage.pendingRecovery || browserStorage.getItem(storage.recoveryKey)}:null}, `${data.bookId}-${chapter.id}.recovery.json`);
 window.addEventListener('storage', event => {
+  if (storage.records) return;
   if (event.key === store?.key || event.key === null) {
     dictation.cancel(); store.blocked = true; store.error = 'Another tab changed these notes. Export recovery data, then reload.'; storageStatus(); renderComments();
   }
 });
 window.addEventListener('pagehide', () => { savePosition(); dictation.cancel(); audio.pause(); });
-window.addEventListener('beforeunload', event => { if (store?.dirty) { event.preventDefault(); event.returnValue = ''; } });
+window.addEventListener('beforeunload', event => { if (store?.dirty || storage.dirty) { event.preventDefault(); event.returnValue = ''; } });
 document.addEventListener('visibilitychange', () => { if (document.hidden) savePosition(); });
-let initial = data.chapters[0].id;
-try { const raw = storage.getItem(selectionKey); if (raw !== null) { const saved = JSON.parse(raw); if (!data.chapters.some(c => c.id === saved.chapterId)) throw Error('Saved chapter missing'); initial = saved.chapterId; } }
-catch { selectionBlocked = true; }
-void selectChapter(initial);
+window.addEventListener('reader-storage',()=>{if(store)storageStatus();});
+async function initialize() {
+  if(location.protocol!=='file:') {
+    try { storage=await DatabaseStorage.connect(browserStorage,data); }
+    catch(error) {databaseUnavailable=error.message;}
+  }
+  let initial=data.chapters[0].id;
+  try {const raw=storage.getItem(selectionKey);if(raw!==null){const saved=JSON.parse(raw);if(!data.chapters.some(c=>c.id===saved.chapterId))throw Error('Saved chapter missing');initial=saved.chapterId;}}
+  catch {selectionBlocked=true;}
+  await selectChapter(initial);
+  workspace=mountWorkspace({data,storage,browserStorage,context:()=>({chapter,store}),navigate:selectChapter,listen:listenAt,locate,update,pause:pauseForWriting,refresh:renderComments});
+  storageStatus();
+}
+void initialize().catch(error=>{databaseUnavailable=error.message;status(error.message);if(store)storageStatus();});

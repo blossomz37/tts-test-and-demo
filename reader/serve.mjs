@@ -2,7 +2,9 @@
 import http from 'node:http';
 import { readFile, realpath, stat } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import { spawn } from 'node:child_process';
+import { ReaderDatabase } from './database.mjs';
 import { resolve, dirname, sep, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -21,18 +23,51 @@ export async function createReaderServer(directory) {
   const root = await realpath(directory), run = dirname(root);
   const inputs = JSON.parse(await readFile(resolve(root, 'inputs.json'), 'utf8'));
   const chapters = new Map(inputs.chapters.map(c => [c.id, c]));
-  const allowed = new Set(['index.html', 'style.css', 'app.js', 'data.js', 'verification.json']);
-  const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8', '.mp3': 'audio/mpeg' };
+  const runtimeHash = sha(await readFile(fileURLToPath(import.meta.url)));
+  const database = new ReaderDatabase(root, inputs), apiToken = randomUUID(), previews = new Map();
+  const allowed = new Set(['index.html', 'style.css', 'app.js', 'data.js', 'verification.json', 'manifest.webmanifest', 'icon.svg']);
+  const types = { '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8', '.mp3': 'audio/mpeg' };
   const integrity = async c => {
     const [source, narration, audio, receipt] = await Promise.all([c.sourcePath, c.narrationPath, c.audioPath, c.receiptPath].map(p => readFile(p)));
     if (sha(source) !== c.source.sha256 || sha(narration) !== c.narrationSha256 || sha(audio) !== c.audioSha256 || sha(receipt) !== c.receiptSha256) throw Error('Source, narration, recording or receipt changed. Regenerate the reader before playing or annotating.');
     if (c.alignmentSha256 && sha(await readFile(resolve(root, 'alignments', c.alignmentFile))) !== c.alignmentSha256) throw Error('Word alignment changed. Regenerate the reader.');
     return { ok: true, sourceSha256: c.source.sha256, audioSha256: c.audioSha256, narrationSha256: c.narrationSha256, alignmentSha256: c.alignmentSha256 };
   };
-  return http.createServer(async (req, res) => {
+  const server = http.createServer(async (req, res) => {
     try {
       // Reject DNS rebinding / cross-origin probes. No CORS and no write endpoints.
       if (!/^127\.0\.0\.1:\d+$/.test(req.headers.host || '')) { res.writeHead(403); res.end(); return; }
+      const origin = `http://127.0.0.1:${server.address().port}`;
+      if (req.headers.host !== new URL(origin).host) { res.writeHead(403); res.end(); return; }
+      if (req.url.startsWith('/reader/api/')) {
+        const json = (status, value) => { res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Cross-Origin-Resource-Policy': 'same-origin', 'X-Content-Type-Options': 'nosniff' }); res.end(JSON.stringify(value)); };
+        try {
+          if ((req.headers.origin && req.headers.origin !== origin) || req.headers['sec-fetch-site'] === 'cross-site') return json(403, { error: 'Same-origin access required' });
+          const route = req.url.slice('/reader/api/'.length);
+          if (req.method === 'GET' && route === 'identity') return json(200, { application: 'local-chapter-reader', version: 2, fingerprint: sha(root + JSON.stringify(inputs) + runtimeHash) });
+          if (req.method === 'GET' && route === 'session') return json(200, { ...database.read(), token: apiToken, databasePath: database.path });
+          if (req.method === 'GET' && route === 'backup') return json(200, database.backup());
+          if (req.method !== 'POST') return json(405, { error: 'Unsupported action' });
+          if (req.headers.origin !== origin || req.headers['x-reader-token'] !== apiToken || req.headers['content-type'] !== 'application/json') return json(403, { error: 'Same-origin write token required' });
+          let body = '', size = 0;
+          for await (const chunk of req) { size += chunk.length; if (size > 16 * 1024 * 1024) throw Object.assign(Error('Backup is too large'), { status: 413 }); body += chunk; }
+          const value = JSON.parse(body);
+          if (route === 'save') return json(200, database.save(value.records, value.revision));
+          if (route === 'preview') {
+            const report = database.preview(value.backup), token = randomUUID();
+            if (previews.size >= 10) previews.delete(previews.keys().next().value);
+            previews.set(token, { backup: value.backup, revision: database.read().revision, expires: Date.now() + 300000 });
+            return json(200, { ...report, token });
+          }
+          if (route === 'restore') {
+            const preview = previews.get(value.token); previews.delete(value.token);
+            if (!preview || preview.expires < Date.now()) throw Error('Restore preview expired. Preview the backup again.');
+            for (const c of chapters.values()) await integrity(c);
+            return json(200, database.save(preview.backup.records, preview.revision, { restore: true }));
+          }
+          return json(404, { error: 'Unknown action' });
+        } catch (error) { return json(error.status || 400, { error: error.message }); }
+      }
       if (!['GET', 'HEAD'].includes(req.method)) { res.writeHead(405, { Allow: 'GET, HEAD' }); res.end(); return; }
       const url = new URL(req.url, 'http://127.0.0.1'), path = decodeURIComponent(url.pathname);
       if (path === '/favicon.ico') { res.writeHead(204); res.end(); return; }
@@ -66,13 +101,32 @@ export async function createReaderServer(directory) {
       const stream = createReadStream(file, { start, end }); stream.on('error', () => res.destroy()); res.on('close', () => stream.destroy()); stream.pipe(res);
     } catch { if (!res.headersSent) res.writeHead(404); res.end('Not found'); }
   });
+  server.on('close', () => database.close());
+  return server;
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const { values } = parseArgs({ options: { port: { type: 'string' }, dir: { type: 'string' } } });
+  const { values } = parseArgs({ options: { port: { type: 'string' }, dir: { type: 'string' }, open: { type: 'boolean' } } });
   // A required stable port avoids quietly opening an origin with different saved notes.
   const port = Number(values.port);
   if (!values.port || !Number.isInteger(port) || port < 0 || port > 65535) throw Error('Use --port YOUR_ASSIGNED_PORT (or --port 0 for isolated tests only)');
-  const server = await createReaderServer(values.dir || dirname(fileURLToPath(import.meta.url)));
-  server.on('error', error => { console.error(error.code === 'EADDRINUSE' ? 'Assigned port is occupied. Keep the stable port and check its owner; do not stop an unknown process.' : error.message); process.exitCode = 1; });
-  server.listen(port, '127.0.0.1', () => console.log(`Chapter reader: http://127.0.0.1:${server.address().port}/reader/`));
+  const directory = values.dir || dirname(fileURLToPath(import.meta.url));
+  const origin = `http://127.0.0.1:${port}`;
+  const fingerprint = sha(await realpath(directory) + await readFile(resolve(directory, 'inputs.json'), 'utf8').then(s => JSON.stringify(JSON.parse(s))) + sha(await readFile(fileURLToPath(import.meta.url))));
+  const openBrowser = url => {
+    const command = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'explorer.exe' : 'xdg-open';
+    const child = spawn(command, [url], { detached: true, stdio: 'ignore' });
+    child.on('error', () => console.log(`Open ${url} in your browser.`)); child.unref();
+  };
+  if (port && values.open) {
+    try {
+      const response = await fetch(`${origin}/reader/api/identity`, { signal: AbortSignal.timeout(1500) });
+      const existing = await response.json();
+      if (existing.application === 'local-chapter-reader' && existing.version === 2 && existing.fingerprint === fingerprint) {
+        console.log(`Reader already running: ${origin}/reader/`); openBrowser(`${origin}/reader/`); process.exit(0);
+      }
+    } catch { /* A free port is normal. Binding still refuses unrelated processes. */ }
+  }
+  const server = await createReaderServer(directory);
+  server.on('error', error => { console.error(error.code === 'EADDRINUSE' ? 'Assigned port is occupied. Keep the stable port and check its owner; do not stop an unknown process.' : error.message); server.emit('close'); process.exitCode = 1; });
+  server.listen(port, '127.0.0.1', () => { const url=`http://127.0.0.1:${server.address().port}/reader/`; console.log(`Chapter reader: ${url}`); if(values.open)openBrowser(url); });
 }

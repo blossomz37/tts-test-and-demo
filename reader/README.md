@@ -7,7 +7,7 @@ independent. No narration is generated and no provider calls are made.
 
 ## Generate
 
-Use Node >=22 and `npm ci`. The supported input is a local narration run with:
+Use Node >=22.13 and `npm ci`. The supported input is a local narration run with:
 
 - `render-config.json`: `inputs` with chapter numbers, source filenames,
   source/prepared SHA-256 and explicit scene-marker exclusions.
@@ -65,11 +65,11 @@ For stable notes, live identity checks, dictation and reliable MP3 seeking, use 
 included launcher with a dedicated assigned port:
 
 ```sh
-node /absolute/path/to/audio-run/reader/serve.mjs --port YOUR_ASSIGNED_PORT
+node /absolute/path/to/audio-run/reader/serve.mjs --port YOUR_ASSIGNED_PORT --open
 ```
 
 Open `http://127.0.0.1:PORT/reader/` using the printed number. Keep the same
-hostname, port and browser profile on future visits. The equivalent repository
+hostname and port on future visits. SQLite notes are shared across browser profiles; browser recovery copies remain profile-specific. The equivalent repository
 command is:
 
 ```sh
@@ -79,8 +79,7 @@ npm run reader:serve -- --dir /absolute/path/to/audio-run/reader --port YOUR_ASS
 Use a dedicated port separate from the main demo's root-scope service worker,
 following the host port registry. An occupied port produces an error; the launcher
 never stops another process or silently changes origins. `--port 0` is for isolated
-tests only. The loopback server supports GET/HEAD and single byte ranges, exposing
-only reader assets and paired MP3s. Other run files and browser notes are not served.
+tests only. The loopback server supports GET/HEAD and single byte ranges for reader assets and paired MP3s. Its notes API requires an exact local origin and a per-launch token for writes. Database files, snapshots and unrelated run files are never served. `--open` opens the browser and reuses an existing server only when its reader identity matches exactly.
 
 Choose a chapter, then Play. Seeking, pause/resume, start over and speed changes
 drive highlights through `audio.currentTime`. One audio element prevents overlap.
@@ -133,21 +132,68 @@ source, saved comments, a separate draft and notes. Position keys also include
 source/audio hashes; changed inputs cannot inherit old positions. Old position
 keys remain available and selected chapter is saved separately.
 
-Storage belongs to a browser profile/origin, not a backup or multi-tab merge
-system. Keep one writing tab per chapter. Mismatched sources, unreadable records
-and conflicting writes block replacement and expose **Export recovery data**.
-Recovery includes untouched raw storage and in-memory work, including drafts.
-Quota failures retain typed text in the open page; Save/Delete roll back their
-saved-comment mutation. Export recovery before leaving. To deliberately start
-over after recovery, remove only the reported key in browser storage tools and
-reload. There is no automatic reset or import.
+With the launcher, the authoritative reader state lives in **`reader/notes/reader.sqlite`**.
+This is a dedicated SQLite database using Node's bundled `node:sqlite` (experimental
+in the minimum supported Node release). It stores validated book records and a
+revision number in transactions. It does not modify source manuscripts or audio.
+No third-party database service, account or native npm extension is required.
+The generated launcher bundles its own application modules.
 
-**Export chapter notes** uses schema **3**, extending the main demo's schema 2 with
+The page retains an emergency browser copy while commits are pending. The save
+status distinguishes pending work from confirmed database saves. An interrupted
+save exposes **Recover pending edits**; it is never silently replayed. Old browser
+keys remain intact and can be imported explicitly through **Book tools → Backups &
+exports → Import browser notes**. Imported records must match the book, exact
+source and recording. Conflicts are blocked rather than automatically merged.
+A failed saved-comment mutation restores its earlier UI state and asks for recovery;
+an uncertain network outcome requires reload to inspect the database.
+
+A verified SQLite snapshot is made before the first write in a server session,
+before later writes at least five minutes apart, and before every restore. These
+snapshots remain under `notes/backups/`; no automatic deletion is performed.
+Regeneration preserves the entire notes directory. Copy a completed snapshot for
+an independent database backup; do not copy an active SQLite file without its WAL.
+
+**Back up whole book** exports a portable version-1 JSON backup with all notes,
+saved comments, unfinished drafts, bookmarks, review progress, reading preferences
+and positions. The original audio is referenced by hash and is not embedded.
+**Restore backup** validates every identity and anchor, previews current/incoming
+counts, and requires explicit Apply. A preview expires after five minutes and is
+invalidated by competing database writes. The previous database is snapshotted
+before replacement. Manuscript/version mismatches are blocked and retained for
+manual review; there is no automatic anchor relocation.
+
+Direct-file mode retains the older browser-only behavior and does not offer
+SQLite restore. Use the launcher for durable saves. **Export recovery data** includes
+current in-memory work and the retained browser recovery copy. Browser and disk
+storage errors must be resolved before leaving an unsaved page.
+
+**Export chapter JSON** uses schema **3**, extending the main demo's schema 2 with
 `application`, `bookId`, `chapterId` and audio/narration hashes. It retains complete
 source SHA-256/text, exact UTF-16 `[start,end)` anchors, `type: selection` comments
 and one `type: general`, `anchor: null` entry for nonblank chapter notes. Note line
 breaks are preserved. Unfinished drafts and interim speech are excluded. Export
 before saving an edit uses the original saved body. Manuscripts are never edited.
+
+## Reading and revision workspace
+
+The player provides previous/next chapter, ten-second skips, selection-based
+**Listen from here**, speed-adjusted remaining time and remembered speed/Follow.
+**Focus view** hides the notes rail. **Book tools** contains text size, line spacing,
+reading width, appearance, book-wide text/comment search and review filters.
+Comments have optional categories and open/resolved state. Click an underlined
+word to reveal its comment; each comment offers Show passage and Listen.
+Bookmarks and chapter-reviewed state are stored with source/audio identity.
+
+**Export revision brief** produces readable Markdown with saved notes, quoted
+passages, categories, resolution and source offsets; unfinished drafts are excluded.
+Normal chapter JSON remains export schema 3. Full-book restore uses its separate
+backup format, not chapter-export JSON.
+
+Generated readers include a manifest and icon for browsers supporting standalone
+installation. Installation has not been verified on every browser/OS. The launcher
+must be running; no service worker or server-free offline cache is installed.
+Custom keyboard shortcuts and headphone/system media controls are explicitly deferred.
 
 ## Verification
 
@@ -162,7 +208,11 @@ Tests use synthetic inputs for 14 numerical pairings, Unicode offsets, stale
 inputs, range serving, drafts, edits/deletes, exports, failed writes and conflicting
 tabs. A Git-visible-only checkout needs no private book or local alignment assets.
 
-`test/chapter-reader.browser.js` is a Playwright CLI `run-code` function for a
+`test/chapter-reader.browser.js` covers exact source and playback/highlights across every chapter of a disposable reader.
+`test/reader-upgrade.browser.js` covers SQLite workflows in a disposable
+`reader-verification` fixture only, including fresh browser profiles and conflicts.
+Create the synthetic fixture with `node test/prepare-reader-fixture.mjs` (requires FFmpeg), then start its printed launcher with `--port 0`. Use a fresh fixture for each editing run.
+Both are Playwright CLI `run-code` function for a
 generated reader in a **dedicated test browser session**. Open the reader, take a
 snapshot, then pass that file's text as the code argument. It verifies every
 chapter, real media playback/seeking, clock-driven highlights, speed, Follow,

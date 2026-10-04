@@ -61,10 +61,13 @@ try {
   for (const file of ['data.js', 'app.js', 'index.html', 'style.css', 'verification.json', 'inputs.json']) await cp(resolve(out, file), resolve(backup, file));
 } catch (error) { if (error.code !== 'ENOENT') throw error; }
 await cp(resolve(repo, 'assets/fonts'), resolve(out, 'fonts'), { recursive: true });
-for (const file of ['index.html', 'style.css', 'serve.mjs']) await cp(resolve(here, file), resolve(out, file));
+for (const file of ['index.html', 'style.css', 'icon.svg']) await cp(resolve(here, file), resolve(out, file));
+const serverBundle = await build({ entryPoints: [resolve(here, 'serve.mjs')], bundle: true, write: false, format: 'esm', platform: 'node', target: 'node22.13' });
+await writeFile(resolve(out, 'serve.mjs'), serverBundle.outputFiles[0].contents);
 await writeFile(resolve(out, 'app.js'), bundled.outputFiles[0].contents);
 await writeFile(resolve(out, 'data.js'), `window.CHAPTER_READER = ${JSON.stringify(data).replaceAll('<', '\\u003c')};\n`);
 await writeFile(resolve(out, 'inputs.json'), JSON.stringify(inputs, null, 2) + '\n');
 await writeFile(resolve(out, 'verification.json'), JSON.stringify({ schemaVersion: 1, chapters: report, notes: 'Approximate forced alignment; coverage of supplied text does not prove narration completeness.' }, null, 2) + '\n');
+await writeFile(resolve(out, 'manifest.webmanifest'), JSON.stringify({ id: './', name: inputs.title + ' · Chapter reader', short_name: 'Chapter reader', start_url: './', scope: './', display: 'standalone', background_color: '#fbf8f3', theme_color: '#252326', icons: [{src:'icon.svg',sizes:'any',type:'image/svg+xml',purpose:'any'}] }, null, 2));
 await writeFile(resolve(out, 'README.txt'), 'Open index.html for local-file reading/playback. For stable saved notes, audio identity checks and dictation, run: node serve.mjs --port YOUR_ASSIGNED_PORT\nUse the same 127.0.0.1 hostname and port each time. Export notes before moving origins. No microphone starts automatically.\nGenerated with TTS Methods reader/generate.mjs. See the reusable reader README for regeneration and recovery.\n');
 console.log(`Reader ready: ${resolve(out, 'index.html')}`);

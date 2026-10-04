@@ -4,14 +4,14 @@
   "type": "module",
   "scripts": {
     "start": "node scripts/serve.mjs",
-    "test": "node --test test/reader.test.mjs test/generated-reader.test.mjs test/dictation.test.mjs test/comments.test.mjs test/chapter-reader.test.mjs",
+    "test": "node --test test/reader.test.mjs test/generated-reader.test.mjs test/dictation.test.mjs test/comments.test.mjs test/chapter-reader.test.mjs test/reader-database.test.mjs",
     "build": "node scripts/build.mjs",
     "setup:model": "node scripts/setup-model.mjs",
     "reader:generate": "node reader/generate.mjs",
     "reader:serve": "node reader/serve.mjs"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.13"
   },
   "dependencies": {
     "@huggingface/transformers": "3.8.1",

@@ -2,7 +2,7 @@
 
 ## Scope and commands
 
-Two independent demos: the main browser TTS/STT/comment app at the root, and the recorded model comparison in `research/`. A separate reusable recorded-chapter reader lives in `reader/`; see `reader/README.md` for its generator and persistence contracts. Keep their entry points separate. Use Node >=22.
+Two independent demos: the main browser TTS/STT/comment app at the root, and the recorded model comparison in `research/`. A separate reusable recorded-chapter reader lives in `reader/`; see `reader/README.md` for its generator and persistence contracts. Keep their entry points separate. Use Node >=22.13.
 
 ```sh
 npm ci
@@ -59,3 +59,13 @@ Run npm test and npm run build after relevant app changes. Check real browser pl
 Do not force-add ignored files to make a build/test pass. Verify a checkout containing only Git-visible files. Keep archived/local material local; do not restore it into the publish set without review.
 
 The chapter-reader generator writes only beside the supplied audio run, outside this repository. Never commit generated data, source manuscripts, alignments or notes. Reuse `src/comments.mjs` and `src/dictation.mjs` as pure shared contracts; the new UI owns chapter lifecycle and storage. Export schema 3 adds book/chapter/audio identity to schema 2. Never substitute normalized narration offsets for exact source offsets. A dedicated stable loopback origin avoids the main demo's root service worker; restart the generated launcher after regeneration. Browser checks must use controlled dictation events unless microphone testing is explicitly requested.
+
+
+Reader upgrade: `reader/database.mjs` owns the private SQLite database and snapshots;
+`reader/book-records.mjs` validates portable backups and renders revision briefs;
+`reader/database-client.mjs` distinguishes acknowledged database saves from browser
+recovery copies. All notes API writes require exact Origin and per-launch token.
+The generated launcher bundles its modules. Never serve or commit `notes/` data.
+Restore is previewed, version-bound and snapshot-backed; never silently replay a
+pending browser recovery. Custom keyboard shortcuts and Media Session controls
+are deferred. PWA metadata does not promise a stopped-server offline mode.

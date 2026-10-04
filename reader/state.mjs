@@ -8,10 +8,12 @@ export function validateSidecar(saved, bookId, chapter) {
   const ids = new Set();
   for (const c of saved.comments) {
     if (typeof c.id !== 'string' || ids.has(c.id) || c.sourceSha256 !== chapter.source.sha256 || !matches(chapter.source.text, c.anchor) || typeof c.body !== 'string' || typeof c.createdAt !== 'string') throw Error('Unreadable saved comment. Existing data is preserved.');
+    if ((c.category !== undefined && !['', 'wording', 'continuity', 'pacing', 'audio issue'].includes(c.category)) || (c.resolved !== undefined && typeof c.resolved !== 'boolean')) throw Error('Invalid comment review state');
     ids.add(c.id);
   }
   const d = saved.draft;
   if (d !== null && (!d || !matches(chapter.source.text, d.anchor) || typeof d.body !== 'string' || (d.commentId && !ids.has(d.commentId)))) throw Error('Unreadable draft. Existing data is preserved.');
+  if (d?.category !== undefined && !['', 'wording', 'continuity', 'pacing', 'audio issue'].includes(d.category)) throw Error('Invalid draft category');
   if (d?.commentId && JSON.stringify(d.anchor) !== JSON.stringify(saved.comments.find(c => c.id === d.commentId).anchor)) throw Error('Draft anchor differs from its saved comment. Existing data is preserved.');
 }
 
@@ -49,6 +51,8 @@ export class SidecarStore {
     if (!draft) throw Error('No comment draft to save');
     const original = draft.commentId && this.state.comments.find(c => c.id === draft.commentId);
     const comment = original ? reviseComment(this.chapter.source, original, draft.body) : makeComment(this.chapter.source, draft.anchor, draft.body);
+    comment.category = draft.category || '';
+    comment.resolved = original?.resolved || false;
     const comments = original ? this.state.comments.map(c => c.id === original.id ? comment : c) : [...this.state.comments, comment];
     return this.write({ ...this.state, comments, draft: null });
   }
