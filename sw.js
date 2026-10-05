@@ -1,4 +1,4 @@
-const CACHE = 'tts-lab-kokoro-a30a3ef31cdf';
+const CACHE = 'tts-lab-kokoro-b2cbc1b78b13';
 const MODEL_CACHE = 'tts-kokoro-model-1939ad2a8e416c0acfeecc08a694d14ef25f2231';
 const SHELL = ['/', '/index.html', '/style.css', '/assets/fonts/hanken-grotesk-latin-wght-normal.woff2', '/assets/fonts/bricolage-grotesque-latin-wght-normal.woff2', '/assets/fonts/anton-latin-400-normal.woff2', '/src/app.mjs', '/src/icon-buttons.mjs', '/src/dictation.mjs', '/src/comments.mjs', '/src/comments-ui.mjs', '/src/reader.mjs', '/src/generated-reader.mjs', '/src/kokoro-engine.mjs'];
 self.addEventListener('install', event => { event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting())); });

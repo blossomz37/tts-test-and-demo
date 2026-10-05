@@ -1,12 +1,14 @@
 import { DatabaseStorage } from './database-client.mjs';
 import { mountWorkspace } from './workspace.mjs';
 import { mountReadingLayout } from './reading-layout.mjs';
+import { initializeIconButtons } from '../src/icon-buttons.mjs';
 import { anchor, snapToWords, relativeTime } from '../src/comments.mjs';
 import { Dictation, appendTranscript } from '../src/dictation.mjs';
 import { SidecarStore, positionKey, readPosition } from './state.mjs';
 import { sentenceCueAnchors, playbackAction, shouldFollowAudio } from './reading-state.mjs';
 
 const data = window.CHAPTER_READER, $ = id => document.getElementById(id), audio = $('audio');
+initializeIconButtons({ root: document.querySelector('.chapter-review'), iconOnly: true });
 let chapter, store, spans = [], selected = null, epoch = 0, raf = 0, loaded = false, ready = false;
 let pendingPosition = 0, positionBlocked = false, positionError = '', lastSave = 0, lastFollow = -1, dictationTarget = null, composerOpen = false;
 const time = seconds => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;

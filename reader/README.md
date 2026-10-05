@@ -115,8 +115,12 @@ Follow audio scrolls when the active word moves out of view; turn it off to brow
 The display preserves source punctuation, whitespace, paragraphs and scene breaks.
 Markdown is displayed as source text rather than interpreted HTML.
 
-The chapter toolbar stays visible while scrolling, with **Listen from here**,
-**Comment on selection**, **Chapter reviewed** and **Bookmark position**. On wide
+The chapter toolbar stays visible while scrolling. **Listen from here**,
+**Comment on selection** and **Bookmark position** use compact line icons with
+hover/focus tooltips and accessible names; the checkbox reads **Reviewed**.
+**Bookmarks** shows the saved count and opens a scrollable list beside these
+controls, including in Focus view. Choosing a bookmark seeks to it; Escape or a
+click outside closes the list. On wide
 screens the notes/comments panel stays beside the text and scrolls independently.
 On smaller screens and in Focus view, **Notes & comments** opens the same controls
 in a keyboard-accessible dialog. **Back to reading** or Escape closes the panel

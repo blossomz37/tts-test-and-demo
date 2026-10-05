@@ -51,9 +51,11 @@
       <section class="reading" aria-label="Chapter text">
         <div id="reading-toolbar" class="reading-toolbar">
           <div class="reading-heading"><div class="reading-context"><h2 id="chapter-title">Chapter</h2><p id="paragraph-location" aria-label="Reading location"></p></div><button id="notes-toggle" aria-haspopup="dialog" aria-controls="notes-dialog" aria-expanded="false">Notes & comments</button></div>
-          <div class="chapter-review actions"><button id="listen-selection" disabled>Listen from here</button><button id="comment-selection" disabled>Comment on selection</button><label><input id="chapter-reviewed" type="checkbox"> Chapter reviewed</label><button id="bookmark">Bookmark position</button></div>
+          <div class="chapter-review actions"><button id="listen-selection" disabled>Listen from here</button><button id="comment-selection" disabled>Comment on selection</button><button id="bookmark">Bookmark position</button><label><input id="chapter-reviewed" type="checkbox"> Reviewed</label>
+            <details id="bookmark-menu" class="bookmark-menu"><summary aria-label="Saved bookmarks"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M5 3h14v18l-7-4-7 4ZM9 7h6M9 11h6"/></svg><span class="bookmark-menu-label">Bookmarks</span><span id="bookmark-count" aria-hidden="true">0</span></summary><section class="bookmark-list" aria-label="Saved bookmarks"><h3>Saved bookmarks</h3><p id="bookmarks-empty" class="hint">Use the bookmark icon to save your listening position.</p><div id="bookmarks"></div></section></details>
+          </div>
         </div>
-        <div id="bookmarks"></div><div class="passage-frame"><div id="paragraph-numbers" aria-hidden="true"></div><span id="playback-position" class="playback-position" aria-hidden="true" hidden></span><div id="passage" tabindex="0"></div></div>
+        <div class="passage-frame"><div id="paragraph-numbers" aria-hidden="true"></div><span id="playback-position" class="playback-position" aria-hidden="true" hidden></span><div id="passage" tabindex="0"></div></div>
       </section>
       <aside id="notes-panel" aria-label="Notes and comments" tabindex="-1">
         <div class="notes-dialog-heading"><strong>Notes & comments</strong><button id="close-notes">Back to reading</button></div>

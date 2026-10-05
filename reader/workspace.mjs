@@ -33,12 +33,22 @@ export function mountWorkspace({ data, storage, browserStorage, context, navigat
   function state(c) { return new SidecarStore(storage,data.bookId,c).state; }
   function review(c) { return JSON.parse(storage.getItem(reviewKey(data.bookId,c)) || '{"reviewed":false,"bookmarks":[]}'); }
   function saveReview(value) { storage.setItem(reviewKey(data.bookId,context().chapter),JSON.stringify(value)); renderChapter(); renderBook(); }
+  const bookmarkMenu = $('bookmark-menu'), bookmarkSummary = bookmarkMenu.querySelector('summary');
+  let bookmarkChapter;
+  document.addEventListener('pointerdown', event => { if (!bookmarkMenu.contains(event.target)) bookmarkMenu.open = false; });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && bookmarkMenu.open) { bookmarkMenu.open = false; bookmarkSummary.focus({ preventScroll: true }); }
+  });
   function renderChapter() {
     const { chapter }=context(); if (!chapter) return;
+    if (bookmarkChapter !== chapter.id) { bookmarkMenu.open = false; bookmarkChapter = chapter.id; }
     const r=review(chapter); $('chapter-reviewed').checked=r.reviewed;
+    $('bookmark-count').textContent = r.bookmarks.length;
+    bookmarkSummary.setAttribute('aria-label', `Saved bookmarks (${r.bookmarks.length})`);
+    $('bookmarks-empty').hidden = r.bookmarks.length > 0;
     $('bookmarks').replaceChildren(...r.bookmarks.map(b=>{
       const row=document.createElement('div'); row.className='bookmark-row';
-      row.append(button(b.label,()=>listen(b.time,false)),button('Remove',()=>{ if(confirm('Remove this bookmark?')) saveReview({...review(chapter),bookmarks:review(chapter).bookmarks.filter(x=>x.id!==b.id)}); })); return row;
+      row.append(button(b.label,async()=>{await listen(b.time,false);bookmarkMenu.open=false;bookmarkSummary.focus({preventScroll:true});}),button('Remove',()=>{ if(confirm('Remove this bookmark?')) {saveReview({...review(chapter),bookmarks:review(chapter).bookmarks.filter(x=>x.id!==b.id)});bookmarkSummary.focus({preventScroll:true});} })); return row;
     }));
     const index=data.chapters.findIndex(c=>c.id===chapter.id); $('previous-chapter').disabled=index===0; $('next-chapter').disabled=index===data.chapters.length-1;
   }

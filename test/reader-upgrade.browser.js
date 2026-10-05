@@ -32,7 +32,7 @@ async (page) => {
   await page.getByRole('button',{name:'Resolve',exact:true}).click();await saved();check(await page.locator('.comment-card.resolved').count()===1,'Resolve comment');
   await page.getByRole('button',{name:'Reopen',exact:true}).click();await saved();
   await page.getByRole('button',{name:'Edit',exact:true}).click();await page.getByRole('textbox',{name:'Comment draft',exact:true}).fill('Pending edit retained');await saved();check((await page.locator('#draft-status').innerText()).includes('Draft saved locally. The saved comment is unchanged.'),'Draft acceptance distinct from persistence');await page.getByRole('button',{name:'Back · keep draft',exact:true}).click();await saved();
-  await page.getByRole('checkbox',{name:'Chapter reviewed',exact:true}).check();await saved();
+  await page.getByRole('checkbox',{name:'Reviewed',exact:true}).check();await saved();
   await page.getByRole('button',{name:'Bookmark position',exact:true}).click();await saved();
   await page.getByRole('button',{name:'Search & book tools',exact:true}).click();await page.getByText('Reading settings',{exact:true}).click();
   await page.getByRole('combobox',{name:'Speed',exact:true}).selectOption('1.5');await page.getByRole('combobox',{name:'Appearance',exact:true}).selectOption('dark');await page.getByRole('combobox',{name:'Text size',exact:true}).selectOption('22');await saved();

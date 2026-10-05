@@ -125,6 +125,18 @@ body.composer-open #play:hover:not(:disabled), body.composer-open #compact-play:
 body.notes-in-dialog #notes-toggle { display: block; flex-shrink: 0; }
 .chapter-review { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0; font-size: 14px; color: var(--muted); }
 .chapter-review label { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.chapter-review > .icon-button { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex: 0 0 44px; padding: 10px; }
+.icon-button svg, .bookmark-menu svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.chapter-review input[type=checkbox] { margin: 0; }
+.button-tooltip { position: fixed; z-index: 20; max-width: min(260px, calc(100vw - 16px)); padding: 7px 10px; border-radius: 5px; background: var(--ink); color: var(--paper); font: 13px/1.4 Hanken, system-ui, sans-serif; box-shadow: 0 2px 8px var(--shadow); }
+.bookmark-menu { position: relative; margin-left: auto; flex-shrink: 0; }
+.bookmark-menu > summary { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 8px 10px; list-style: none; cursor: pointer; border: 1px solid var(--boundary); border-radius: 6px; color: var(--ink); font-size: 14px; }
+.bookmark-menu > summary::-webkit-details-marker { display: none; }
+.bookmark-menu > summary:hover, .bookmark-menu[open] > summary { background: var(--hover); }
+#bookmark-count { min-width: 18px; padding: 1px 4px; border-radius: 9px; background: var(--hover); color: var(--ink); font-size: 12px; text-align: center; font-variant-numeric: tabular-nums; }
+.bookmark-list { position: absolute; top: calc(100% + 8px); right: 0; width: min(340px, calc(100vw - 48px)); max-height: min(320px, calc(100dvh - var(--transport-height) - var(--reading-toolbar-height) - 80px)); overflow-y: auto; overscroll-behavior: contain; padding: 16px; background: var(--paper); border: 1px solid var(--boundary); border-radius: 8px; box-shadow: 0 6px 20px var(--shadow); }
+.bookmark-list h3 { font-size: 16px; margin: 0 0 12px; }
+.bookmark-list .hint { margin: 0; }
 .passage-frame { position: relative; width: calc(100% - 30px); max-width: var(--reading-width); margin-left: auto; margin-right: auto; transform: translateX(15px); }
 #paragraph-numbers { position: absolute; inset: 0; pointer-events: none; user-select: none; }
 #paragraph-numbers span { position: absolute; left: -42px; width: 26px; text-align: right; font: 12px/1.6 Hanken, system-ui, sans-serif; font-variant-numeric: tabular-nums; color: var(--muted); }
@@ -194,6 +206,8 @@ blockquote { border-left: 2px solid var(--editorial); padding-left: 12px; margin
 #book-results { max-height: 440px; overflow: auto; padding: 4px; }
 .bookmark-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
 .bookmark-row button { font-size: 14px; }
+.bookmark-row button:first-child { flex: 1; text-align: left; min-width: 0; overflow-wrap: anywhere; }
+.bookmark-row button:last-child { flex-shrink: 0; }
 .help { margin-top: 36px; border-top: 1px solid var(--line); padding-top: 16px; color: var(--muted); max-width: 900px; font-size: 14px; line-height: 1.5; }
 .help summary { cursor: pointer; min-height: 44px; }
 .help:has(.error) { border: 1px solid var(--error); border-radius: 6px; padding: 16px; }
@@ -206,7 +220,6 @@ body.focus-view .book-heading { align-items: center; margin-bottom: 16px; }
 body.focus-view .book-heading h1 { font-size: 25px; }
 body.focus-view .transport { padding: 10px 14px; }
 body.focus-view .workspace { grid-template-columns: 1fr; margin-top: 22px; }
-body.focus-view #bookmarks { display: none; }
 body.focus-view .reading { max-width: calc(var(--reading-width) + 110px); margin: auto; width: 100%; }
 #compact-player { display: none; }
 
@@ -242,9 +255,12 @@ body.focus-view .reading { max-width: calc(var(--reading-width) + 110px); margin
   .reading-heading { gap: 8px; }
   .reading-context { display: grid; }
   .reading-heading h2 { font-size: 22px; }
-  .chapter-review { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
-  .chapter-review button { min-width: 0; font-size: 13px; padding-inline: 7px; }
-  .chapter-review label { min-width: 0; font-size: 13px; }
+  .chapter-review { flex-wrap: nowrap; gap: 4px; }
+  .chapter-review label { gap: 5px; font-size: 13px; }
+  .chapter-review input[type=checkbox] { width: 20px; height: 20px; }
+  .bookmark-menu > summary { position: relative; width: 44px; height: 44px; padding: 9px; }
+  .bookmark-menu-label { display: none; }
+  #bookmark-count { position: absolute; top: -5px; right: -5px; border: 1px solid var(--boundary); }
   #paragraph-numbers span { left: -36px; width: 22px; }
   .tools { padding: 8px 14px; }
   .export-options { grid-template-columns: 1fr; gap: 12px; }
@@ -266,7 +282,9 @@ body.focus-view .reading { max-width: calc(var(--reading-width) + 110px); margin
   header { padding-inline: 14px; }
   .book-heading { padding-inline: 2px; }
   .reading { padding: 20px 18px; }
-  .reading-toolbar { margin: -20px -18px 20px; }
+  .reading-toolbar { margin: -20px -18px 20px; padding-inline: 10px; }
+  .chapter-review { gap: 2px; }
+  .chapter-review label { gap: 4px; }
   .settings-grid, .settings-grid label { width: 100%; }
   .settings-grid input, .settings-grid select { min-width: 0; width: 100%; }
   .chapter-navigation { gap: 6px; }
