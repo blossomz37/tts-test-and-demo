@@ -123,11 +123,15 @@ body.composer-open #play:hover:not(:disabled), body.composer-open #compact-play:
 #paragraph-location { margin: 0; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 #notes-toggle { display: none; font-size: 14px; }
 body.notes-in-dialog #notes-toggle { display: block; flex-shrink: 0; }
-.chapter-review { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0; font-size: 14px; color: var(--muted); }
+.chapter-review { --review-control-size: 22px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0; font-size: 14px; color: var(--muted); }
 .chapter-review label { display: flex; align-items: center; gap: 8px; min-height: 44px; }
-.chapter-review > .icon-button { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex: 0 0 44px; padding: 10px; }
+.chapter-review > .icon-button { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex: 0 0 44px; padding: 0; border: 0; background: transparent; }
+/* Match the checkbox visually while keeping the full 44px hit area. */
+.chapter-review > .icon-button::before { content: ''; position: absolute; box-sizing: border-box; width: var(--review-control-size); height: var(--review-control-size); border: 1px solid var(--boundary); border-radius: 3px; background: var(--paper); }
+.chapter-review > .icon-button:hover:not(:disabled)::before { background: var(--hover); }
 .icon-button svg, .bookmark-menu svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
-.chapter-review input[type=checkbox] { margin: 0; }
+.chapter-review > .icon-button svg { position: relative; width: 16px; height: 16px; }
+.chapter-review input[type=checkbox] { margin: 0; width: var(--review-control-size); height: var(--review-control-size); }
 .button-tooltip { position: fixed; z-index: 20; max-width: min(260px, calc(100vw - 16px)); padding: 7px 10px; border-radius: 5px; background: var(--ink); color: var(--paper); font: 13px/1.4 Hanken, system-ui, sans-serif; box-shadow: 0 2px 8px var(--shadow); }
 .bookmark-menu { position: relative; margin-left: auto; flex-shrink: 0; }
 .bookmark-menu > summary { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 8px 10px; list-style: none; cursor: pointer; border: 1px solid var(--boundary); border-radius: 6px; color: var(--ink); font-size: 14px; }
@@ -255,9 +259,8 @@ body.focus-view .reading { max-width: calc(var(--reading-width) + 110px); margin
   .reading-heading { gap: 8px; }
   .reading-context { display: grid; }
   .reading-heading h2 { font-size: 22px; }
-  .chapter-review { flex-wrap: nowrap; gap: 4px; }
+  .chapter-review { --review-control-size: 20px; flex-wrap: nowrap; gap: 4px; }
   .chapter-review label { gap: 5px; font-size: 13px; }
-  .chapter-review input[type=checkbox] { width: 20px; height: 20px; }
   .bookmark-menu > summary { position: relative; width: 44px; height: 44px; padding: 9px; }
   .bookmark-menu-label { display: none; }
   #bookmark-count { position: absolute; top: -5px; right: -5px; border: 1px solid var(--boundary); }
