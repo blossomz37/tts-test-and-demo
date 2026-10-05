@@ -4,6 +4,14 @@ export function readingPreferences(saved, systemDark = false) {
   return { ...defaultPreferences, theme: systemDark ? 'dark' : 'light', ...saved };
 }
 
+// Number source paragraphs, not wrapped display lines. Keep native UTF-16 offsets
+// and omit standalone scene separators; no markers are inserted into the source.
+export function paragraphRanges(text) {
+  return Array.from(text.matchAll(/\S[\s\S]*?(?=\r?\n[\t ]*\r?\n|$)/gu))
+    .filter(match => !/^(?:\*[\t ]*){3,}$/.test(match[0].trim()))
+    .map((match, index) => ({ number: index + 1, start: match.index, end: match.index + match[0].trimEnd().length }));
+}
+
 // Group verified word cues by source sentence. These ranges never supply audio timing
 // or replace the source text, and all indexes remain native UTF-16 offsets.
 export function sentenceCueAnchors(text, cues, Segmenter = globalThis.Intl?.Segmenter) {

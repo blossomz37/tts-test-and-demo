@@ -1,5 +1,6 @@
 import { DatabaseStorage } from './database-client.mjs';
 import { mountWorkspace } from './workspace.mjs';
+import { mountReadingLayout } from './reading-layout.mjs';
 import { anchor, snapToWords, relativeTime } from '../src/comments.mjs';
 import { Dictation, appendTranscript } from '../src/dictation.mjs';
 import { SidecarStore, positionKey, readPosition } from './state.mjs';
@@ -62,9 +63,10 @@ function mark(target) {
   if (target) { const highlight = new Highlight(rangeFor(target)); highlight.priority = 2; CSS.highlights.set('comment-target', highlight); }
 }
 function locate(target) {
+  readingLayout.close();
   mark(target);
   const el = spans.find(s => s.cue.from >= target.start)?.span || $('passage');
-  el.scrollIntoView({ block: 'center', behavior: 'instant' });
+  scrollToPassage(el);
 }
 function showComposer() {
   const draft = store.state.draft; if (!draft) return;
@@ -72,7 +74,7 @@ function showComposer() {
   $('composer-title').textContent = draft.commentId ? 'Edit comment' : 'Comment on selection';
   $('comment-category').value = draft.category || '';
   $('quote').textContent = draft.anchor.quote; $('comment-body').value = draft.body;
-  mark(draft.anchor); $('comment-body').focus(); storageStatus();
+  mark(draft.anchor); readingLayout.show($('comment-body')); storageStatus();
 }
 function renderComments(selectedId) {
   const comments = store.state.comments;
@@ -108,7 +110,10 @@ function renderComments(selectedId) {
     card.append(meta, quote, body, when, actions); return card;
   }));
   $('resume-draft').hidden = !store.state.draft || composerOpen;
-  if (selectedId) $('comments').querySelector('.selected')?.scrollIntoView({block:'nearest'});
+  if (selectedId) {
+    readingLayout.show();
+    const card = $('comments').querySelector('.selected'); if (card) readingLayout.reveal(card);
+  }
   workspace?.renderBook();
 }
 function closeComposer() { composerOpen = false; document.body.classList.remove('composer-open'); $('composer').hidden = true; $('resume-draft').hidden = !store.state.draft; mark(null); }
@@ -128,6 +133,13 @@ async function mutateSaved(action) {
   } finally { mutationBusy = false; renderComments(); storageStatus(); }
 }
 function pauseForWriting() { epoch++; audio.pause(); savePosition(); dictation.cancel(); }
+const readingLayout = mountReadingLayout({ rangeFor, pause: pauseForWriting, cancelDictation: () => dictation.cancel() });
+function scrollToPassage(element) {
+  const top = Math.max(0, document.querySelector('.transport').getBoundingClientRect().bottom,
+    $('reading-toolbar').getBoundingClientRect().bottom);
+  const available = Math.max(44, innerHeight - top - 110);
+  window.scrollBy({ top: element.getBoundingClientRect().top - top - available / 3, behavior: 'instant' });
+}
 
 const dictation = new Dictation({ Recognition: window.SpeechRecognition || window.webkitSpeechRecognition,
   append: words => {
@@ -175,6 +187,7 @@ function renderPassage() {
   }
   fragment.append(document.createTextNode(chapter.source.text.slice(cursor))); $('passage').replaceChildren(fragment);
   if ($('passage').textContent !== chapter.source.text) throw Error('Text preservation check failed');
+  readingLayout.setChapter(chapter.source.text);
   cueEvents = spans.flatMap((item,i) => [{time:item.cue.start, i, enter:true}, {time:item.cue.displayEnd, i, enter:false}]).sort((a,b)=>a.time-b.time || Number(a.enter)-Number(b.enter));
   sentenceAnchors = sentenceCueAnchors(chapter.source.text, chapter.cues);
   eventCursor=0; previousTime=-1; activeSpans=new Set(); positionCue=-1; markerSentence=-1; markerLayoutDirty=true;
@@ -208,11 +221,11 @@ function update() {
   }
   previousTime=t; const activeIndex=activeSpans.size ? Math.max(...activeSpans) : -1;
   updatePositionMarker();
-  const editing = composerOpen || dictation.state !== 'idle' || !!document.activeElement?.matches('textarea,input:not([type=range]):not([type=checkbox])');
+  const editing = composerOpen && $('composer').getClientRects().length > 0 || dictation.state !== 'idle' || !!document.activeElement?.matches('textarea,input:not([type=range]):not([type=checkbox])');
   if (shouldFollowAudio({ follow: $('follow').checked, activeIndex, lastFollow, selectionCollapsed: getSelection().isCollapsed, editing })) {
     lastFollow = activeIndex;
-    const el = spans[activeIndex].span, rect = el.getBoundingClientRect(), top = document.querySelector('.transport').getBoundingClientRect().bottom;
-    if (rect.top < top + 35 || rect.bottom > innerHeight - 70) el.scrollIntoView({ block: 'center', behavior: 'instant' });
+    const el = spans[activeIndex].span, rect = el.getBoundingClientRect(), top = Math.max(0, document.querySelector('.transport').getBoundingClientRect().bottom, $('reading-toolbar').getBoundingClientRect().bottom);
+    if (rect.top < top + 20 || rect.bottom > innerHeight - 110) scrollToPassage(el);
   }
   const action = playbackAction(audio.paused, audio.ended, t);
   document.body.dataset.playback = audio.ended ? 'finished' : !audio.paused ? 'playing' : t > 0 ? 'paused' : 'ready';
@@ -254,6 +267,7 @@ async function listenAt(t, play = true) {
   if(play) {dictation.cancel(); await audio.play();}
 }
 async function listenFrom(target) {
+  readingLayout.close();
   const cue=chapter.cues.find(c=>c.to>target.start); if(cue) {try{await listenAt(cue.start);}catch(error){status(error.message);}}
 }
 async function selectChapter(id, force = false) {
@@ -299,12 +313,13 @@ $('compact-play').onclick=()=>$('play').click();
 for(const [id,delta] of [['compact-rewind',-10],['compact-forward',10]])$(id).onclick=()=>void listenAt(Math.max(0,Math.min(chapter.duration,audio.currentTime+delta)),false).catch(error=>status(error.message));
 function compactVisibility() {
   const typing=document.activeElement?.matches('textarea,input:not([type=range]):not([type=checkbox]),select');
-  $('compact-player').hidden=!matchMedia('(max-width:760px)').matches || document.querySelector('.transport').getBoundingClientRect().bottom>0 || typing || !$('restore-preview').hidden;
+  $('compact-player').hidden=!matchMedia('(max-width:760px)').matches || document.querySelector('.transport').getBoundingClientRect().bottom>0 || typing || $('notes-dialog').open || !$('restore-preview').hidden;
 }
 window.addEventListener('scroll',compactVisibility,{passive:true});
 window.addEventListener('resize',compactVisibility);
 document.addEventListener('focusin',compactVisibility);
 document.addEventListener('focusout',()=>queueMicrotask(compactVisibility));
+$('notes-dialog').addEventListener('close',compactVisibility);
 $('restart').onclick = () => { audio.currentTime = 0; lastFollow = -1; update(); savePosition(); };
 $('seek').oninput = () => { audio.currentTime = Number($('seek').value); lastFollow = -1; update(); };
 $('speed').onchange = () => { audio.playbackRate = Number($('speed').value); update(); };
@@ -343,7 +358,7 @@ $('passage').onclick = event => {
   if(!getSelection().isCollapsed)return;
   const word=event.target.closest('.word');if(!word)return;const offset=Number(word.dataset.from);
   const comment=store.state.comments.find(c=>offset<c.anchor.end && offset>=c.anchor.start);
-  if(comment){workspace?.showNotes();locate(comment.anchor);renderComments(comment.id);}
+  if(comment){locate(comment.anchor);renderComments(comment.id);}
 };
 $('comment-selection').onpointerdown = event => event.preventDefault();
 $('comment-selection').onclick = () => {
@@ -382,7 +397,7 @@ async function initialize() {
   try {const raw=storage.getItem(selectionKey);if(raw!==null){const saved=JSON.parse(raw);if(!data.chapters.some(c=>c.id===saved.chapterId))throw Error('Saved chapter missing');initial=saved.chapterId;}}
   catch {selectionBlocked=true;}
   await selectChapter(initial);
-  workspace=mountWorkspace({data,storage,browserStorage,context:()=>({chapter,store}),navigate:selectChapter,listen:listenAt,locate,update:()=>{markerLayoutDirty=true;update();},pause:pauseForWriting,refresh:renderComments});
+  workspace=mountWorkspace({data,storage,browserStorage,context:()=>({chapter,store}),navigate:selectChapter,listen:listenAt,locate,showNotes:()=>readingLayout.show($('notes')),update:()=>{markerLayoutDirty=true;readingLayout.refresh();update();},pause:pauseForWriting,refresh:renderComments});
   storageStatus();
 }
 void initialize().catch(error=>{databaseUnavailable=error.message;status(error.message);if(store)storageStatus();});

@@ -7,7 +7,7 @@ export function downloadFile(value, name, type = 'application/json') {
   const url = URL.createObjectURL(new Blob([text], { type })), a = document.createElement('a');
   a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
-export function mountWorkspace({ data, storage, browserStorage, context, navigate, listen, locate, update, pause, refresh }) {
+export function mountWorkspace({ data, storage, browserStorage, context, navigate, listen, locate, showNotes, update, pause, refresh }) {
   const message = text => { $('action-status').textContent = text; };
   const records = () => Object.fromEntries(data.chapters.flatMap(c => [sidecarKey(data.bookId, c.id), reviewKey(data.bookId, c)]).concat(Object.keys(storage.records || {})).filter((v,i,a)=>a.indexOf(v)===i).map(k=>[k,storage.getItem(k)]).filter(([,v])=>v!==null));
   const run = action => async () => { try { await action(); } catch (e) { message(e.message); } };
@@ -53,7 +53,7 @@ export function mountWorkspace({ data, storage, browserStorage, context, navigat
     for(const c of data.chapters){
       if(regex && !category && filter==='all') for(const m of c.source.text.matchAll(regex)) { const target={start:m.index,end:m.index+m[0].length};add(c,'Passage',c.source.text.slice(Math.max(0,m.index-45),m.index+120),async()=>{if(await navigate(c.id)===false)return; locate(target);});if(results.length>=100)break; }
       const s=state(c);
-      if(query && !category && filter==='all' && s.notes.toLowerCase().includes(query.toLowerCase()))add(c,'Chapter notes',s.notes,async()=>{await navigate(c.id);prefs.focus=false;applyPrefs();$('notes').focus();});
+      if(query && !category && filter==='all' && s.notes.toLowerCase().includes(query.toLowerCase()))add(c,'Chapter notes',s.notes,async()=>{if(await navigate(c.id)===false)return;showNotes();});
       for(const cm of s.comments){if(filter==='open'&&cm.resolved||filter==='resolved'&&!cm.resolved||category&&cm.category!==category)continue;if(query&&!`${cm.body} ${cm.anchor.quote}`.toLowerCase().includes(query.toLowerCase()))continue;
         add(c,`${cm.category||'Comment'} · ${cm.resolved?'resolved':'open'}`,cm.body,async()=>{if(await navigate(c.id)===false)return;prefs.focus=false;applyPrefs();locate(cm.anchor);refresh(cm.id);},cm.anchor.quote);}
     }
@@ -101,5 +101,5 @@ export function mountWorkspace({ data, storage, browserStorage, context, navigat
   const recoveryButtons=()=>{$('retry-save').hidden=!storage.error||storage.blocked;$('keep-database').hidden=!storage.blocked;};
   window.addEventListener('reader-storage',recoveryButtons);recoveryButtons();
   $('keep-database').onclick=run(async()=>{const raw=storage.pendingRecovery||browserStorage.getItem(storage.recoveryKey);if(raw)browserStorage.setItem(storage.recoveryKey+':retained:'+crypto.randomUUID(),raw);const response=await fetch('./api/session',{cache:'no-store'});if(!response.ok)throw Error('Database is unavailable');storage.accept(await response.json());storage.pendingRecovery=null;prefs=loadPreferences();applyPrefs();await navigate(context().chapter.id,true);renderChapter();renderBook();message('Saved database version loaded. The earlier browser recovery copy was retained.');});
-  applyPrefs();renderChapter();renderBook();return {renderChapter,renderBook,showNotes(){prefs.focus=false;savePrefs();}};
+  applyPrefs();renderChapter();renderBook();return {renderChapter,renderBook};
 }

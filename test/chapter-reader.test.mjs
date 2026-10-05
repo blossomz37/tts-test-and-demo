@@ -8,10 +8,19 @@ import { narrationMap, mapAlignment, activeCues } from '../reader/alignment.mjs'
 import { SidecarStore, readPosition, positionKey } from '../reader/state.mjs';
 import { hash, inspectInputs } from '../reader/inputs.mjs';
 import { byteRange, createReaderServer } from '../reader/serve.mjs';
-import { sentenceCueAnchors, playbackAction, shouldFollowAudio } from '../reader/reading-state.mjs';
+import { sentenceCueAnchors, playbackAction, shouldFollowAudio, paragraphRanges } from '../reader/reading-state.mjs';
 
 const source = { id: 'chapter-01', text: 'One 🪶 two.\n\n***\n\nOne more.', sha256: 'source-a' };
 const chapter = { id: source.id, source, audioSha256: 'audio-a', narrationSha256: 'narration-a', duration: 10 };
+test('paragraph references preserve UTF-16 source offsets across soft lines and scene breaks', () => {
+  const text = ' \r\n\r\n  One 🪶 two.\r\nStill one paragraph.\r\n \t\r\n***\r\n\r\n“Second paragraph.”  \r\n\r\nThird.';
+  const ranges = paragraphRanges(text);
+  assert.deepEqual(ranges.map(p => p.number), [1, 2, 3]);
+  assert.deepEqual(ranges.map(p => text.slice(p.start, p.end)), ['One 🪶 two.\r\nStill one paragraph.', '“Second paragraph.”', 'Third.']);
+  assert.equal(ranges[1].start, text.indexOf('“Second'));
+  assert.deepEqual(paragraphRanges('\n \t\n***\n\n* * *\n'), []);
+  assert.deepEqual(paragraphRanges('One\nsoft line.\n\nTwo'), [{ number: 1, start: 0, end: 14 }, { number: 2, start: 16, end: 19 }]);
+});
 test('sentence marker groups exact UTF-16 cues without changing multiline source or timing', () => {
   const text = 'One 🪶 two.\n“Three four!” Fifth\nword.';
   const cues = [...text.matchAll(/One|🪶|two|Three|four|Fifth|word/gu)].map((m, i) => ({ from: m.index, to: m.index + m[0].length, start: i, displayEnd: i + .8 }));

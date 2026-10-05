@@ -115,6 +115,21 @@ Follow audio scrolls when the active word moves out of view; turn it off to brow
 The display preserves source punctuation, whitespace, paragraphs and scene breaks.
 Markdown is displayed as source text rather than interpreted HTML.
 
+The chapter toolbar stays visible while scrolling, with **Listen from here**,
+**Comment on selection**, **Chapter reviewed** and **Bookmark position**. On wide
+screens the notes/comments panel stays beside the text and scrolls independently.
+On smaller screens and in Focus view, **Notes & comments** opens the same controls
+in a keyboard-accessible dialog. **Back to reading** or Escape closes the panel
+and keeps saved notes and unfinished drafts. Selecting text and starting a comment
+opens the editor directly.
+
+Paragraph numbers appear in the margin, and **Paragraph X of Y** tracks the top
+of the visible prose. Numbering follows nonblank source blocks, keeps soft line
+breaks within their paragraph, and skips standalone `***` scene separators. It is
+unchanged by reading font, text size or window width. Numbers are display-only:
+they are outside the selectable source and never enter copied text or comment
+anchors. Audio-follow and Show passage account for the pinned controls.
+
 The Quiet Manuscript design uses warm neutral surfaces, green playback cues,
 plum comment underlines, and blue selection. The sentence gutter marker retains
 the listening location while paused. Under **Search & book tools → Reading
@@ -242,6 +257,8 @@ node reader/verify.mjs --dir /absolute/path/to/audio-run/reader --decode
 Tests use synthetic inputs for 14 numerical pairings, Unicode offsets, stale
 inputs, range serving, drafts, edits/deletes, exports, failed writes and conflicting
 tabs. A Git-visible-only checkout needs no private book or local alignment assets.
+Use `node test/prepare-reader-fixture.mjs --long` for a disposable 34-paragraph
+chapter when checking pinned controls, paragraph numbering and narrow notes dialogs.
 
 `test/chapter-reader.browser.js` covers exact source and playback/highlights across every chapter of a disposable reader.
 `test/reader-upgrade.browser.js` covers SQLite workflows in a disposable

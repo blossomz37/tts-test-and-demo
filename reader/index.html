@@ -48,8 +48,15 @@
       </details>
     </section>
     <div class="workspace">
-      <section class="reading" aria-label="Chapter text"><div class="reading-heading"><h2 id="chapter-title">Chapter</h2><div class="actions"><button id="listen-selection" disabled>Listen from here</button><button id="comment-selection" disabled>Comment on selection</button></div></div><div class="chapter-review"><label><input id="chapter-reviewed" type="checkbox"> Chapter reviewed</label><button id="bookmark">Bookmark position</button></div><div id="bookmarks"></div><div class="passage-frame"><span id="playback-position" class="playback-position" aria-hidden="true" hidden></span><div id="passage" tabindex="0"></div></div></section>
-      <aside aria-label="Notes and comments">
+      <section class="reading" aria-label="Chapter text">
+        <div id="reading-toolbar" class="reading-toolbar">
+          <div class="reading-heading"><div class="reading-context"><h2 id="chapter-title">Chapter</h2><p id="paragraph-location" aria-label="Reading location"></p></div><button id="notes-toggle" aria-haspopup="dialog" aria-controls="notes-dialog" aria-expanded="false">Notes & comments</button></div>
+          <div class="chapter-review actions"><button id="listen-selection" disabled>Listen from here</button><button id="comment-selection" disabled>Comment on selection</button><label><input id="chapter-reviewed" type="checkbox"> Chapter reviewed</label><button id="bookmark">Bookmark position</button></div>
+        </div>
+        <div id="bookmarks"></div><div class="passage-frame"><div id="paragraph-numbers" aria-hidden="true"></div><span id="playback-position" class="playback-position" aria-hidden="true" hidden></span><div id="passage" tabindex="0"></div></div>
+      </section>
+      <aside id="notes-panel" aria-label="Notes and comments" tabindex="-1">
+        <div class="notes-dialog-heading"><strong>Notes & comments</strong><button id="close-notes">Back to reading</button></div>
         <section class="notes-panel"><h2>Chapter notes</h2><label class="sr-only" for="notes">General notes</label><textarea id="notes" rows="7" placeholder="What stands out in this chapter?"></textarea><button id="dictate-notes">Dictate notes</button><p id="notes-interim" class="interim" aria-live="polite"></p><p id="dictation-status" role="status"></p></section>
         <p id="storage-status" role="status"></p><button id="recovery" hidden>Export recovery data</button>
         <button id="resume-draft" hidden>Resume draft</button>
@@ -57,6 +64,7 @@
         <section><h2>Saved comments <span id="comment-count"></span></h2><p id="empty-comments" class="hint">Select a passage to attach a comment.</p><div id="comments"></div></section>
       </aside>
     </div>
+    <dialog id="notes-dialog" aria-label="Notes and comments"></dialog>
     <details class="help"><summary>About timing, privacy & recovery</summary><p id="integrity" class="notice"></p><p>Dictation uses Chrome’s on-device English recognition. It may need a language pack and microphone permission. Typing is always available.</p><p>Word timings are approximate machine alignments of the existing recording to its narration text. They do not prove every word was narrated correctly. Collapsed short words share the next timed word’s highlight.</p><p>Text is an immutable source snapshot. Comments use its exact SHA-256 and UTF-16 [start,end) offsets. Notes never change the manuscript. Saved comments and current chapter notes are included in JSON exports; unfinished drafts and interim speech are excluded.</p><p>With the launcher, notes, drafts, preferences and positions are saved to a local SQLite database beside this reader. Browser copies help recover interrupted saves. Whole-book backups include drafts; chapter JSON and revision briefs include saved comments and notes. Direct-file mode keeps browser-only storage. Competing database writes are blocked; export recovery data and reload. Source-mismatched or unreadable records are preserved and blocked from replacement.</p><p>Direct-file mode supports reading and playback where allowed by your browser. The local server adds live input identity checks, reliable seeking, a stable origin and the secure local context needed for dictation. Nothing is uploaded.</p></details>
   </main>
   <section id="compact-player" aria-label="Quick playback" hidden>
